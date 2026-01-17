@@ -26,6 +26,7 @@ Resources:
   BancowHttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
+      Name: !Sub '${ProjectName}-${Environment}'
       StageName: !Ref Environment
       Description: !Sub 'BANCOW ${Environment} HTTP API'
       CorsConfiguration:

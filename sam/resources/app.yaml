@@ -26,9 +26,9 @@ Parameters:
   ArtifactsBucketName:
     Type: String
     Description: Artifacts bucket name from CDK base stack
-  LogsBucketName:
+  TemplatesBucketName:
     Type: String
-    Description: Logs bucket name from CDK base stack
+    Description: Templates bucket name from CDK base stack
 
 Globals:
   Function:
@@ -59,7 +59,7 @@ Resources:
   SoapIntegrationFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-${Environment}-soap-integration'
+      FunctionName: !Sub 'BancowService-${Environment}'
       Description: Lambda function to integrate with external SOAP services
       CodeUri: ../../placeholder/  # Code deployed from bancow-app repo
       Handler: index.handler
@@ -87,7 +87,7 @@ Resources:
   SoapIntegrationLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-soap-integration'
+      LogGroupName: !Sub '/aws/lambda/BancowService-${Environment}'
       RetentionInDays: !If [IsProd, 90, 30]
 
   ApiHandlerLogGroup:

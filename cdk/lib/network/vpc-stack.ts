@@ -34,7 +34,7 @@ export class VpcStack extends cdk.NestedStack {
     // The VPC should already exist from CloudFormation deployment
     this.vpc = ec2.Vpc.fromLookup(this, 'ImportedVpc', {
       tags: {
-        Name: `${projectName}-${environment}-vpc`,
+        Name: 'vpc_bancow_poc',
       },
     });
 

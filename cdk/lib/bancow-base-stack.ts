@@ -36,7 +36,7 @@ export class BancowBaseStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BancowBaseStackProps) {
     super(scope, id, props);
 
-    const projectName = 'bancow';
+    const projectName = 'bancow-legacy-soap-rest';
     const { environment } = props;
 
     // GitHub configuration (should be parameterized in production)

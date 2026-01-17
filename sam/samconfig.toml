@@ -31,7 +31,7 @@ resolve_s3 = true
 s3_prefix = "bancow-dev"
 parameter_overrides = [
     "Environment=dev",
-    "ProjectName=bancow"
+    "ProjectName=bancow-legacy-soap-rest"
 ]
 tags = [
     "Project=BANCOW",
@@ -53,7 +53,7 @@ resolve_s3 = true
 s3_prefix = "bancow-uat"
 parameter_overrides = [
     "Environment=uat",
-    "ProjectName=bancow"
+    "ProjectName=bancow-legacy-soap-rest"
 ]
 tags = [
     "Project=BANCOW",
@@ -75,7 +75,7 @@ resolve_s3 = true
 s3_prefix = "bancow-prod"
 parameter_overrides = [
     "Environment=prod",
-    "ProjectName=bancow"
+    "ProjectName=bancow-legacy-soap-rest"
 ]
 tags = [
     "Project=BANCOW",

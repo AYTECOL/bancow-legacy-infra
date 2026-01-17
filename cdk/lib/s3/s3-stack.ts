@@ -16,12 +16,12 @@ export interface S3StackProps extends cdk.NestedStackProps {
  * 
  * Buckets managed:
  * - Artifacts bucket (for Lambda deployment packages)
- * - Logs bucket (for application and access logs)
+ * - Templates bucket (for CloudFormation templates)
  * - Data bucket (for application data storage)
  */
 export class S3Stack extends cdk.NestedStack {
   public readonly artifactsBucket: s3.IBucket;
-  public readonly logsBucket: s3.IBucket;
+  public readonly templatesBucket: s3.IBucket;
   public readonly dataBucket: s3.IBucket;
 
   constructor(scope: Construct, id: string, props: S3StackProps) {
@@ -33,14 +33,14 @@ export class S3Stack extends cdk.NestedStack {
     this.artifactsBucket = s3.Bucket.fromBucketName(
       this,
       'ArtifactsBucket',
-      `${projectName}-${environment}-artifacts`,
+      `bancow-${environment}-artifacts`,
     );
 
-    // Import existing Logs bucket
-    this.logsBucket = s3.Bucket.fromBucketName(
+    // Import existing Templates bucket
+    this.templatesBucket = s3.Bucket.fromBucketName(
       this,
-      'LogsBucket',
-      `${projectName}-${environment}-logs`,
+      'TemplatesBucket',
+      `bancow-${environment}-templates`,
     );
 
     // Import existing Data bucket
@@ -66,19 +66,19 @@ export class S3Stack extends cdk.NestedStack {
       tier: ssm.ParameterTier.STANDARD,
     });
 
-    // Publish Logs bucket name to SSM
-    new ssm.StringParameter(this, 'LogsBucketParameter', {
-      parameterName: `/${projectName}/${environment}/s3/logs-bucket-name`,
-      stringValue: this.logsBucket.bucketName,
-      description: `Logs S3 bucket name for ${projectName} ${environment}`,
+    // Publish Templates bucket name to SSM
+    new ssm.StringParameter(this, 'TemplatesBucketParameter', {
+      parameterName: `/${projectName}/${environment}/s3/templates-bucket-name`,
+      stringValue: this.templatesBucket.bucketName,
+      description: `Templates S3 bucket name for ${projectName} ${environment}`,
       tier: ssm.ParameterTier.STANDARD,
     });
 
-    // Publish Logs bucket ARN to SSM
-    new ssm.StringParameter(this, 'LogsBucketArnParameter', {
-      parameterName: `/${projectName}/${environment}/s3/logs-bucket-arn`,
-      stringValue: this.logsBucket.bucketArn,
-      description: `Logs S3 bucket ARN for ${projectName} ${environment}`,
+    // Publish Templates bucket ARN to SSM
+    new ssm.StringParameter(this, 'TemplatesBucketArnParameter', {
+      parameterName: `/${projectName}/${environment}/s3/templates-bucket-arn`,
+      stringValue: this.templatesBucket.bucketArn,
+      description: `Templates S3 bucket ARN for ${projectName} ${environment}`,
       tier: ssm.ParameterTier.STANDARD,
     });
 
@@ -105,10 +105,10 @@ export class S3Stack extends cdk.NestedStack {
       exportName: `${projectName}-${environment}-artifacts-bucket`,
     });
 
-    new cdk.CfnOutput(this, 'LogsBucketName', {
-      value: this.logsBucket.bucketName,
-      description: 'Logs Bucket Name',
-      exportName: `${projectName}-${environment}-logs-bucket`,
+    new cdk.CfnOutput(this, 'TemplatesBucketName', {
+      value: this.templatesBucket.bucketName,
+      description: 'Templates Bucket Name',
+      exportName: `${projectName}-${environment}-templates-bucket`,
     });
 
     new cdk.CfnOutput(this, 'DataBucketName', {

@@ -26,14 +26,14 @@ Resources:
         Environment: !Ref Environment
         ProjectName: !Ref ProjectName
         # Consume network resources from SSM
-        VpcId: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/network/vpc-id}}'
-        PrivateSubnetIds: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/network/private-subnet-ids}}'
-        LambdaSecurityGroupId: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/network/lambda-sg-id}}'
+        VpcId: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/network/vpc/id}}'
+        PrivateSubnetIds: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/network/subnets/private}}'
+        LambdaSecurityGroupId: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/network/sg/lambda}}'
         # Consume IAM resources from SSM
         LambdaExecutionRoleArn: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/iam/lambda-execution-role-arn}}'
         # Consume S3 resources from SSM
         ArtifactsBucketName: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/s3/artifacts-bucket-name}}'
-        LogsBucketName: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/s3/logs-bucket-name}}'
+        TemplatesBucketName: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/s3/templates-bucket-name}}'
       Tags:
         - Key: Project
           Value: BANCOW

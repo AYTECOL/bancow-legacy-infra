@@ -38,7 +38,7 @@ export class IamStack extends cdk.NestedStack {
 
     // Permission boundary for deployment roles
     const deploymentBoundary = new iam.ManagedPolicy(this, 'DeploymentBoundary', {
-      managedPolicyName: `${projectName}-${environment}-deployment-boundary`,
+      managedPolicyName: `iam-${projectName}-deployment-boundary`,
       description: 'Permission boundary for CI/CD deployment roles',
       statements: [
         new iam.PolicyStatement({
@@ -62,7 +62,7 @@ export class IamStack extends cdk.NestedStack {
 
     // GitHub Actions deployment role with OIDC trust
     this.githubActionsRole = new iam.Role(this, 'GithubActionsRole', {
-      roleName: `${projectName}-${environment}-github-actions`,
+      roleName: `iam-${projectName}-github-actions-oidc`,
       description: 'Role for GitHub Actions to deploy infrastructure and applications',
       assumedBy: new iam.FederatedPrincipal(
         githubOidcProvider.openIdConnectProviderArn,
@@ -103,6 +103,40 @@ export class IamStack extends cdk.NestedStack {
         ],
         resources: [
           `arn:aws:iam::${cdk.Stack.of(this).account}:role/${projectName}-${environment}-*`,
+          `arn:aws:iam::${cdk.Stack.of(this).account}:role/iam-${projectName}-*`,
+        ],
+      }),
+    );
+
+    // CloudFormation execution role for stack operations
+    const cfnExecutionRole = new iam.Role(this, 'CloudFormationExecutionRole', {
+      roleName: `iam-${projectName}-cfn-execution`,
+      description: 'Role for CloudFormation to execute stack operations',
+      assumedBy: new iam.ServicePrincipal('cloudformation.amazonaws.com'),
+      maxSessionDuration: cdk.Duration.hours(1),
+    });
+
+    // Attach necessary policies for CloudFormation operations
+    cfnExecutionRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess'),
+    );
+
+    cfnExecutionRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'iam:CreateRole',
+          'iam:PutRolePolicy',
+          'iam:AttachRolePolicy',
+          'iam:PassRole',
+          'iam:GetRole',
+          'iam:GetRolePolicy',
+          'iam:DeleteRole',
+          'iam:DeleteRolePolicy',
+          'iam:DetachRolePolicy',
+        ],
+        resources: [
+          `arn:aws:iam::${cdk.Stack.of(this).account}:role/${projectName}-*`,
         ],
       }),
     );
