@@ -81,14 +81,17 @@ jobs:
       - name: Check for hardcoded secrets
         run: |
           echo "Checking for potential hardcoded secrets..."
-          ! grep -r -i -E "(password|secret|apikey|token).*=.*['\"][^'\"]{8,}" stacks/ environments/ || {
+          ! grep -r -i -E "(password|secret|apikey|token)\s*:\s*['\"][^'\"]{8,}" stacks/ environments/ || {
             echo "⚠️ Warning: Potential hardcoded secrets found!"
             exit 1
           }
           echo "✓ No hardcoded secrets detected"
 
       - name: Summary
-        if: success()
         run: |
-          echo "✅ All templates validated successfully!"
-          echo "Ready for deployment to environments."
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "✅ Validation passed for PR. No deployment executed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Validation passed. Changes can be deployed." >> $GITHUB_STEP_SUMMARY
+          fi
+
