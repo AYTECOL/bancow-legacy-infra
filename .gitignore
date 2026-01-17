@@ -10,7 +10,6 @@ cdk/**/*.d.ts
 cdk/.cdk.staging/
 cdk/cdk.context.json
 cdk/node_modules/
-cdk/package-lock.json
 
 # SAM/CloudFormation build artifacts
 .aws-sam/
@@ -73,7 +72,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # TypeScript
 *.tsbuildinfo
