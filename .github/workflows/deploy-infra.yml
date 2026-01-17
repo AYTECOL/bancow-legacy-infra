@@ -59,7 +59,7 @@ jobs:
       - name: Deploy CDK Base Infra
         working-directory: cdk
         run: |
-          npm ci
+          npm ci --loglevel=error
           npm run deploy -- \
             -c environment=${{ needs.determine-environment.outputs.environment }} \
             --require-approval never
