@@ -1,0 +1,38 @@
+# BANCOW Infrastructure Repository - Code Owners
+# These owners will be automatically requested for review when someone opens a pull request.
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @platform-team @devops-team
+
+# CloudFormation/SAM templates - require infrastructure team approval
+/stacks/ @platform-team @infrastructure-leads
+*.yaml @platform-team
+*.yml @platform-team
+
+# Production environment - require additional senior approval
+/environments/prod/ @platform-team @infrastructure-leads @senior-devops
+/environments/prod/parameters.json @platform-team @infrastructure-leads @senior-devops
+
+# UAT environment - require platform team approval
+/environments/uat/ @platform-team @infrastructure-leads
+
+# Dev environment - platform team
+/environments/dev/ @platform-team
+
+# GitHub workflows - require DevOps team approval
+/.github/workflows/ @devops-team @platform-team
+
+# Documentation - anyone on platform team can approve
+*.md @platform-team
+
+# Security-related files
+/stacks/security.yaml @security-team @platform-team
+/stacks/identity.yaml @security-team @platform-team
+
+# Network infrastructure
+/stacks/network.yaml @network-team @platform-team
+
+# Application stack
+/stacks/app.yaml @platform-team @app-team

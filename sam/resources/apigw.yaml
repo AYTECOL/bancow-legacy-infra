@@ -1,0 +1,242 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'BANCOW - API Gateway Stack: REST API, Authorizers, WAF'
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, uat, prod]
+    Description: Environment name
+  ProjectName:
+    Type: String
+    Default: bancow
+    Description: Project name for resource naming
+  SoapIntegrationFunctionArn:
+    Type: String
+    Description: SOAP Integration Lambda Function ARN from AppStack
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: Lambda execution role ARN from CDK base stack
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, 'prod']
+
+Resources:
+  # HTTP API (API Gateway v2) - Simpler and cheaper for serverless
+  BancowHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      Description: !Sub 'BANCOW ${Environment} HTTP API'
+      CorsConfiguration:
+        AllowOrigins:
+          - !If [IsProd, 'https://bancow.example.com', '*']
+        AllowHeaders:
+          - Content-Type
+          - X-Amz-Date
+          - Authorization
+          - X-Api-Key
+          - X-Request-Id
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        MaxAge: 300
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength","integrationLatency":"$context.integrationLatency"}'
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: !If [IsProd, 5000, 1000]
+        ThrottlingRateLimit: !If [IsProd, 2000, 500]
+      Tags:
+        Project: BANCOW
+        Environment: !Ref Environment
+        ManagedBy: SAM
+
+  # Lambda function for API integration (proxies to SOAP)
+  ApiIntegrationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-api-integration'
+      Description: API Gateway integration handler
+      CodeUri: ../../placeholder/
+      Handler: api.handler
+      Runtime: nodejs18.x
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 29
+      MemorySize: 512
+      Tracing: Active
+      Environment:
+        Variables:
+          SOAP_FUNCTION_ARN: !Ref SoapIntegrationFunctionArn
+          ENVIRONMENT: !Ref Environment
+      Events:
+        # POST /soap/request
+        SoapRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BancowHttpApi
+            Path: /soap/request
+            Method: POST
+        # GET /health
+        HealthCheck:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BancowHttpApi
+            Path: /health
+            Method: GET
+
+  # CloudWatch Log Group for API Access Logs
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${ProjectName}-${Environment}-http-api'
+      RetentionInDays: !If [IsProd, 90, 30]
+
+  # CloudWatch Log Group for API Integration Function
+  ApiIntegrationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-api-integration'
+      RetentionInDays: !If [IsProd, 90, 30]
+
+  # WAF Web ACL for API Gateway (production only)
+  ApiWafWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Condition: IsProd
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-api-waf'
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      Rules:
+        # Rate limiting rule
+        - Name: RateLimitRule
+          Priority: 1
+          Statement:
+            RateBasedStatement:
+              Limit: 2000
+              AggregateKeyType: IP
+          Action:
+            Block: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: RateLimitRule
+        # AWS Managed Rule - Common Rule Set
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesCommonRuleSetMetric
+        # AWS Managed Rule - Known Bad Inputs
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 3
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: AWSManagedRulesKnownBadInputsRuleSetMetric
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${ProjectName}-${Environment}-api-waf'
+      Tags:
+        - Key: Project
+          Value: BANCOW
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Associate WAF with API Gateway stage (production only)
+  ApiWafAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Condition: IsProd
+    Properties:
+      ResourceArn: !Sub 'arn:aws:apigateway:${AWS::Region}::/apis/${BancowHttpApi}/stages/${Environment}'
+      WebACLArn: !GetAtt ApiWafWebAcl.Arn
+
+  # API Gateway Custom Domain (optional, for production)
+  # Uncomment and configure if you have a custom domain
+  # ApiCustomDomain:
+  #   Type: AWS::ApiGatewayV2::DomainName
+  #   Condition: IsProd
+  #   Properties:
+  #     DomainName: api.bancow.example.com
+  #     DomainNameConfigurations:
+  #       - EndpointType: REGIONAL
+  #         CertificateArn: !Ref CertificateArn
+
+  # CloudWatch Alarms for API monitoring
+  ApiErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-api-error-rate'
+      AlarmDescription: Alert when API error rate exceeds threshold
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !If [IsProd, 10, 50]
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref BancowHttpApi
+      TreatMissingData: notBreaching
+
+  ApiLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-api-latency'
+      AlarmDescription: Alert when API latency exceeds threshold
+      MetricName: IntegrationLatency
+      Namespace: AWS/ApiGateway
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !If [IsProd, 5000, 10000]
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref BancowHttpApi
+      TreatMissingData: notBreaching
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway URL
+    Value: !Sub 'https://${BancowHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-api-url'
+
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref BancowHttpApi
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-api-id'
+
+  ApiIntegrationFunctionArn:
+    Description: API Integration Function ARN
+    Value: !GetAtt ApiIntegrationFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-api-integration-arn'
+
+  WafWebAclArn:
+    Condition: IsProd
+    Description: WAF Web ACL ARN
+    Value: !GetAtt ApiWafWebAcl.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-waf-acl-arn'

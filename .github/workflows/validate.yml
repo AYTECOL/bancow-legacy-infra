@@ -1,0 +1,94 @@
+name: Validate Infrastructure Templates
+
+on:
+  pull_request:
+    branches: [master, nonprod, dev]
+    paths:
+      - 'stacks/**'
+      - 'environments/**'
+      - '.github/workflows/validate.yml'
+  push:
+    branches: [master, nonprod, dev]
+    paths:
+      - 'stacks/**'
+      - 'environments/**'
+
+jobs:
+  validate:
+    name: Validate CloudFormation Templates
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Python for cfn-lint
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+
+      - name: Validate Root Template
+        run: |
+          echo "Validating root.yaml..."
+          sam validate --template stacks/root.yaml --lint
+
+      - name: Validate Network Stack
+        run: |
+          echo "Validating network.yaml..."
+          cfn-lint stacks/network.yaml
+
+      - name: Validate Security Stack
+        run: |
+          echo "Validating security.yaml..."
+          cfn-lint stacks/security.yaml
+
+      - name: Validate Data Stack
+        run: |
+          echo "Validating data.yaml..."
+          cfn-lint stacks/data.yaml
+
+      - name: Validate Identity Stack
+        run: |
+          echo "Validating identity.yaml..."
+          cfn-lint stacks/identity.yaml
+
+      - name: Validate API Gateway Stack
+        run: |
+          echo "Validating apigw.yaml..."
+          cfn-lint stacks/apigw.yaml
+
+      - name: Validate Application Stack
+        run: |
+          echo "Validating app.yaml..."
+          cfn-lint stacks/app.yaml
+
+      - name: Validate Parameter Files
+        run: |
+          echo "Validating parameter files..."
+          python -m json.tool environments/dev/parameters.json > /dev/null
+          python -m json.tool environments/uat/parameters.json > /dev/null
+          python -m json.tool environments/prod/parameters.json > /dev/null
+          echo "✓ All parameter files are valid JSON"
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Checking for potential hardcoded secrets..."
+          ! grep -r -i -E "(password|secret|apikey|token).*=.*['\"][^'\"]{8,}" stacks/ environments/ || {
+            echo "⚠️ Warning: Potential hardcoded secrets found!"
+            exit 1
+          }
+          echo "✓ No hardcoded secrets detected"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ All templates validated successfully!"
+          echo "Ready for deployment to environments."

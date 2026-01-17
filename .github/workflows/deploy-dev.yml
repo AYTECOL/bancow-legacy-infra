@@ -1,0 +1,123 @@
+name: Deploy to Dev Environment
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'stacks/**'
+      - 'environments/dev/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    environment: dev
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION  }}
+
+      - name: Upload nested stack templates to S3
+        run: |
+          echo "Uploading nested stack templates to S3..."
+          TEMPLATES_BUCKET="${{ vars.TEMPLATES_BUCKET}}"
+          
+          aws s3 sync stacks/ "s3://$TEMPLATES_BUCKET/" \
+            --exclude "*" \
+            --include "*.yaml" \
+            --exclude "root.yaml"
+          
+          echo "✓ Templates uploaded to s3://$TEMPLATES_BUCKET/"
+
+      - name: Load parameters
+        id: params
+        run: |
+          echo "Loading dev environment parameters..."
+          PARAMS=$(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+          echo "parameters=$PARAMS" >> $GITHUB_OUTPUT
+
+      - name: Deploy root stack to Dev
+        run: |
+          echo "Deploying BANCOW infrastructure to Dev..."
+          
+          sam deploy \
+            --template-file stacks/root.yaml \
+            --stack-name bancow-dev-root \
+            --s3-bucket ${{ vars.TEMPLATES_BUCKET_DEV }} \
+            --region ${{ vars.AWS_REGION }} \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides ${{ steps.params.outputs.parameters }} \
+            --tags \
+              Project=BANCOW \
+              Env=dev \
+              Owner=Platform-Team \
+              CostCenter=IT-Infrastructure \
+              Compliance=PCI-DSS \
+              ManagedBy=CloudFormation
+
+      - name: Get stack outputs
+        id: outputs
+        run: |
+          echo "Retrieving stack outputs..."
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name bancow-dev-root \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text)
+          
+          COGNITO_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name bancow-dev-root \
+            --query 'Stacks[0].Outputs[?OutputKey==`CognitoAuthDomain`].OutputValue' \
+            --output text)
+          
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "cognito_domain=$COGNITO_DOMAIN" >> $GITHUB_OUTPUT
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary - Dev Environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Deployment successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Stack Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack Name:** bancow-dev-root" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region:** ${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Outputs" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** ${{ steps.outputs.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cognito Domain:** ${{ steps.outputs.outputs.cognito_domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify API is responding correctly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Run integration tests" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check CloudWatch logs and metrics" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "## ❌ Deployment Failed - Dev Environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the logs above for error details." >> $GITHUB_STEP_SUMMARY
+          echo "Common issues:" >> $GITHUB_STEP_SUMMARY
+          echo "- Invalid template syntax" >> $GITHUB_STEP_SUMMARY
+          echo "- Missing AWS permissions" >> $GITHUB_STEP_SUMMARY
+          echo "- Resource conflicts" >> $GITHUB_STEP_SUMMARY
+          echo "- Parameter validation errors" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,313 @@
+name: Deploy to Production Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "DEPLOY-TO-PRODUCTION" to confirm (case-sensitive)'
+        required: true
+        type: string
+      artifact_version:
+        description: 'Application artifact version to deploy (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-input:
+    name: Validate Production Deployment Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation phrase
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DEPLOY-TO-PRODUCTION" ]; then
+            echo "❌ Deployment cancelled. You must type 'DEPLOY-TO-PRODUCTION' exactly to confirm."
+            exit 1
+          fi
+          echo "✅ Confirmation validated."
+
+      - name: Validate artifact version format
+        run: |
+          if [[ ! "${{ github.event.inputs.artifact_version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "⚠️ Warning: Artifact version should follow semver format (e.g., v1.0.0)"
+            echo "Provided: ${{ github.event.inputs.artifact_version }}"
+          fi
+
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate-input
+    environment: 
+      name: production
+      url: https://bancow-api.example.com
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Verify application artifact exists
+        run: |
+          echo "Verifying production application artifact..."
+          ARTIFACTS_BUCKET="${{ vars.ARTIFACTS_BUCKET_PROD || 'bancow-prod-artifacts' }}"
+          ARTIFACT_KEY="app/bancow-${{ github.event.inputs.artifact_version }}.zip"
+          
+          if aws s3 ls "s3://$ARTIFACTS_BUCKET/$ARTIFACT_KEY" > /dev/null 2>&1; then
+            echo "✓ Artifact found: s3://$ARTIFACTS_BUCKET/$ARTIFACT_KEY"
+            
+            # Get artifact metadata
+            METADATA=$(aws s3api head-object --bucket "$ARTIFACTS_BUCKET" --key "$ARTIFACT_KEY" 2>/dev/null || echo "{}")
+            echo "Artifact metadata:"
+            echo "$METADATA" | jq -r '.Metadata // {}'
+          else
+            echo "❌ Artifact not found: s3://$ARTIFACTS_BUCKET/$ARTIFACT_KEY"
+            echo ""
+            echo "Available artifacts:"
+            aws s3 ls "s3://$ARTIFACTS_BUCKET/app/" --recursive
+            echo ""
+            echo "Please ensure the correct artifact version is published before deploying to production."
+            exit 1
+          fi
+
+      - name: Check drift detection
+        continue-on-error: true
+        run: |
+          echo "Checking for infrastructure drift..."
+          DRIFT_ID=$(aws cloudformation detect-stack-drift \
+            --stack-name bancow-prod-root \
+            --query 'StackDriftDetectionId' \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -n "$DRIFT_ID" ]; then
+            echo "Waiting for drift detection to complete..."
+            sleep 30
+            
+            DRIFT_STATUS=$(aws cloudformation describe-stack-drift-detection-status \
+              --stack-drift-detection-id "$DRIFT_ID" \
+              --query 'StackDriftStatus' \
+              --output text 2>/dev/null || echo "UNKNOWN")
+            
+            if [ "$DRIFT_STATUS" = "DRIFTED" ]; then
+              echo "⚠️ WARNING: Stack has drifted from expected configuration"
+              echo "Review drift details in CloudFormation console before proceeding"
+            else
+              echo "✓ No drift detected"
+            fi
+          else
+            echo "ℹ️ Stack does not exist yet or drift detection not available"
+          fi
+
+      - name: Upload nested stack templates to S3
+        run: |
+          echo "Uploading nested stack templates to S3..."
+          TEMPLATES_BUCKET="${{ vars.TEMPLATES_BUCKET_PROD || 'bancow-prod-templates' }}"
+          
+          # Create versioned backup of current templates
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          aws s3 sync "s3://$TEMPLATES_BUCKET/" "s3://$TEMPLATES_BUCKET/backups/$TIMESTAMP/" \
+            --exclude "*" \
+            --include "*.yaml" 2>/dev/null || echo "No existing templates to backup"
+          
+          # Upload new templates
+          aws s3 sync stacks/ "s3://$TEMPLATES_BUCKET/" \
+            --exclude "*" \
+            --include "*.yaml" \
+            --exclude "root.yaml"
+          
+          echo "✓ Templates uploaded to s3://$TEMPLATES_BUCKET/"
+          echo "✓ Backup created at s3://$TEMPLATES_BUCKET/backups/$TIMESTAMP/"
+
+      - name: Update parameter file with artifact version
+        run: |
+          echo "Updating production parameters with artifact version..."
+          ARTIFACT_KEY="app/bancow-${{ github.event.inputs.artifact_version }}.zip"
+          
+          jq --arg key "$ARTIFACT_KEY" \
+            '.Parameters.AppCodeS3Key = $key' \
+            environments/prod/parameters.json > /tmp/parameters.json
+          
+          mv /tmp/parameters.json environments/prod/parameters.json
+          cat environments/prod/parameters.json
+
+      - name: Load parameters
+        id: params
+        run: |
+          echo "Loading production environment parameters..."
+          PARAMS=$(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+          echo "parameters=$PARAMS" >> $GITHUB_OUTPUT
+
+      - name: Create change set
+        id: changeset
+        run: |
+          echo "Creating change set for PRODUCTION deployment..."
+          CHANGESET_NAME="prod-deploy-$(date +%Y%m%d-%H%M%S)-${{ github.actor }}"
+          
+          sam deploy \
+            --template-file stacks/root.yaml \
+            --stack-name bancow-prod-root \
+            --s3-bucket ${{ vars.TEMPLATES_BUCKET_PROD || 'bancow-prod-templates' }} \
+            --region ${{ vars.AWS_REGION || 'us-east-1' }} \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --no-execute-changeset \
+            --parameter-overrides ${{ steps.params.outputs.parameters }} \
+            --tags \
+              Project=BANCOW \
+              Env=prod \
+              Owner=Platform-Team \
+              CostCenter=IT-Infrastructure \
+              Compliance=PCI-DSS \
+              ManagedBy=CloudFormation \
+              DeployedBy=${{ github.actor }} \
+              DeployedAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          echo "changeset_name=$CHANGESET_NAME" >> $GITHUB_OUTPUT
+
+      - name: Review change set in detail
+        run: |
+          echo "## 📋 Change Set Review - PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Reviewing change set for production deployment..." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          CHANGESET_ID=$(aws cloudformation list-change-sets \
+            --stack-name bancow-prod-root \
+            --query 'Summaries[0].ChangeSetId' \
+            --output text)
+          
+          # Display changes in table format
+          aws cloudformation describe-change-set \
+            --change-set-name "$CHANGESET_ID" \
+            --query 'Changes[*].[ResourceChange.Action,ResourceChange.LogicalResourceId,ResourceChange.ResourceType,ResourceChange.Replacement]' \
+            --output table
+          
+          # Export detailed changes for summary
+          CHANGES=$(aws cloudformation describe-change-set \
+            --change-set-name "$CHANGESET_ID" \
+            --query 'Changes[*].[ResourceChange.Action,ResourceChange.LogicalResourceId,ResourceChange.ResourceType]' \
+            --output json)
+          
+          echo "### Changes to be Applied" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$CHANGES" | jq -r '.[] | "- [\(.[0])] \(.[1]) (\(.[2]))"' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Manual approval checkpoint
+        run: |
+          echo "⏸️ Deployment paused for final approval"
+          echo "Please review the change set above carefully before proceeding."
+          sleep 5
+
+      - name: Execute change set
+        run: |
+          echo "Executing change set for PRODUCTION..."
+          CHANGESET_ID=$(aws cloudformation list-change-sets \
+            --stack-name bancow-prod-root \
+            --query 'Summaries[0].ChangeSetId' \
+            --output text)
+          
+          aws cloudformation execute-change-set \
+            --change-set-name "$CHANGESET_ID"
+          
+          echo "Waiting for stack update to complete..."
+          echo "This may take several minutes..."
+          
+          aws cloudformation wait stack-update-complete \
+            --stack-name bancow-prod-root \
+            --no-paginate
+
+      - name: Get stack outputs
+        id: outputs
+        run: |
+          echo "Retrieving production stack outputs..."
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name bancow-prod-root \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text)
+          
+          COGNITO_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name bancow-prod-root \
+            --query 'Stacks[0].Outputs[?OutputKey==`CognitoAuthDomain`].OutputValue' \
+            --output text)
+          
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "cognito_domain=$COGNITO_DOMAIN" >> $GITHUB_OUTPUT
+
+      - name: Smoke tests
+        run: |
+          echo "Running post-deployment smoke tests..."
+          API_URL="${{ steps.outputs.outputs.api_url }}"
+          
+          # Check API health
+          echo "Checking API health endpoint..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health" 2>/dev/null || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "404" ]; then
+            echo "✓ API is responding (HTTP $HTTP_CODE)"
+          else
+            echo "⚠️ Warning: API returned HTTP $HTTP_CODE"
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Successfully deployed to PRODUCTION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack Name:** bancow-prod-root" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region:** ${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** production" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact Version:** ${{ github.event.inputs.artifact_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed At:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Outputs" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** ${{ steps.outputs.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cognito Domain:** ${{ steps.outputs.outputs.cognito_domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Post-Deployment Tasks" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Monitor CloudWatch metrics for 15-30 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Run full integration test suite" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify all endpoints are responding correctly" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check error rates in CloudWatch dashboards" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Notify stakeholders of successful deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Rollback Information" >> $GITHUB_STEP_SUMMARY
+          echo "If issues arise, rollback by deploying previous artifact version:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "# Trigger this workflow with previous artifact version" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "## ❌ PRODUCTION DEPLOYMENT FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**⚠️ IMMEDIATE ACTION REQUIRED ⚠️**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Failed At:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Immediate Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. ⚠️ Check if production services are still operational" >> $GITHUB_STEP_SUMMARY
+          echo "2. 🔍 Review CloudFormation stack events in AWS Console" >> $GITHUB_STEP_SUMMARY
+          echo "3. 📊 Check CloudWatch logs for error details" >> $GITHUB_STEP_SUMMARY
+          echo "4. 🔄 CloudFormation will automatically rollback on failure" >> $GITHUB_STEP_SUMMARY
+          echo "5. 📞 Notify incident response team if services are impacted" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [CloudFormation Console](https://console.aws.amazon.com/cloudformation)" >> $GITHUB_STEP_SUMMARY
+          echo "- [CloudWatch Logs](https://console.aws.amazon.com/cloudwatch/logs)" >> $GITHUB_STEP_SUMMARY

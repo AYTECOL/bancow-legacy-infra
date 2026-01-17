@@ -1,0 +1,187 @@
+name: Deploy to UAT Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm UAT deployment'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-input:
+    name: Validate Deployment Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+            echo "❌ Deployment cancelled. You must type 'deploy' to confirm."
+            exit 1
+          fi
+          echo "✅ Confirmation validated. Proceeding with UAT deployment."
+
+  deploy-uat:
+    name: Deploy to UAT
+    runs-on: ubuntu-latest
+    needs: validate-input
+    environment: 
+      name: uat
+      url: https://bancow-uat-api.example.com
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_UAT }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Verify application artifact exists
+        run: |
+          echo "Verifying application artifact in S3..."
+          ARTIFACTS_BUCKET="${{ vars.ARTIFACTS_BUCKET_UAT || 'bancow-uat-artifacts' }}"
+          ARTIFACT_KEY=$(cat environments/uat/parameters.json | jq -r '.Parameters.AppCodeS3Key')
+          
+          if aws s3 ls "s3://$ARTIFACTS_BUCKET/$ARTIFACT_KEY" > /dev/null 2>&1; then
+            echo "✓ Artifact found: s3://$ARTIFACTS_BUCKET/$ARTIFACT_KEY"
+          else
+            echo "❌ Artifact not found: s3://$ARTIFACTS_BUCKET/$ARTIFACT_KEY"
+            echo "Please ensure the application artifact is published before deploying infrastructure."
+            exit 1
+          fi
+
+      - name: Upload nested stack templates to S3
+        run: |
+          echo "Uploading nested stack templates to S3..."
+          TEMPLATES_BUCKET="${{ vars.TEMPLATES_BUCKET_UAT || 'bancow-uat-templates' }}"
+          
+          aws s3 sync stacks/ "s3://$TEMPLATES_BUCKET/" \
+            --exclude "*" \
+            --include "*.yaml" \
+            --exclude "root.yaml"
+          
+          echo "✓ Templates uploaded to s3://$TEMPLATES_BUCKET/"
+
+      - name: Load parameters
+        id: params
+        run: |
+          echo "Loading UAT environment parameters..."
+          PARAMS=$(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+          echo "parameters=$PARAMS" >> $GITHUB_OUTPUT
+
+      - name: Create change set
+        id: changeset
+        run: |
+          echo "Creating change set for UAT deployment..."
+          CHANGESET_NAME="uat-deploy-$(date +%Y%m%d-%H%M%S)"
+          
+          sam deploy \
+            --template-file stacks/root.yaml \
+            --stack-name bancow-uat-root \
+            --s3-bucket ${{ vars.TEMPLATES_BUCKET_UAT || 'bancow-uat-templates' }} \
+            --region ${{ vars.AWS_REGION || 'us-east-1' }} \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --no-execute-changeset \
+            --parameter-overrides ${{ steps.params.outputs.parameters }} \
+            --tags \
+              Project=BANCOW \
+              Env=uat \
+              Owner=Platform-Team \
+              CostCenter=IT-Infrastructure \
+              Compliance=PCI-DSS \
+              ManagedBy=CloudFormation
+          
+          echo "changeset_name=$CHANGESET_NAME" >> $GITHUB_OUTPUT
+
+      - name: Review change set
+        run: |
+          echo "Reviewing change set..."
+          aws cloudformation describe-change-set \
+            --stack-name bancow-uat-root \
+            --change-set-name $(aws cloudformation list-change-sets \
+              --stack-name bancow-uat-root \
+              --query 'Summaries[0].ChangeSetName' \
+              --output text) \
+            --query 'Changes[*].[ResourceChange.Action,ResourceChange.LogicalResourceId,ResourceChange.ResourceType]' \
+            --output table
+
+      - name: Execute change set
+        run: |
+          echo "Executing change set for UAT..."
+          CHANGESET_ID=$(aws cloudformation list-change-sets \
+            --stack-name bancow-uat-root \
+            --query 'Summaries[0].ChangeSetId' \
+            --output text)
+          
+          aws cloudformation execute-change-set \
+            --change-set-name "$CHANGESET_ID"
+          
+          echo "Waiting for stack update to complete..."
+          aws cloudformation wait stack-update-complete \
+            --stack-name bancow-uat-root
+
+      - name: Get stack outputs
+        id: outputs
+        run: |
+          echo "Retrieving stack outputs..."
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name bancow-uat-root \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text)
+          
+          COGNITO_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name bancow-uat-root \
+            --query 'Stacks[0].Outputs[?OutputKey==`CognitoAuthDomain`].OutputValue' \
+            --output text)
+          
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "cognito_domain=$COGNITO_DOMAIN" >> $GITHUB_OUTPUT
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary - UAT Environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Deployment successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Stack Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack Name:** bancow-uat-root" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region:** ${{ vars.AWS_REGION || 'us-east-1' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** uat" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Outputs" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** ${{ steps.outputs.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cognito Domain:** ${{ steps.outputs.outputs.cognito_domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Run UAT test suite" >> $GITHUB_STEP_SUMMARY
+          echo "2. Perform manual testing" >> $GITHUB_STEP_SUMMARY
+          echo "3. Validate integration with external systems" >> $GITHUB_STEP_SUMMARY
+          echo "4. Approve for production deployment if successful" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "## ❌ Deployment Failed - UAT Environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed By:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the logs above for error details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Rollback Procedure" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check CloudFormation console for stack events" >> $GITHUB_STEP_SUMMARY
+          echo "2. Review error messages in stack events" >> $GITHUB_STEP_SUMMARY
+          echo "3. Fix issues and re-run deployment" >> $GITHUB_STEP_SUMMARY
+          echo "4. If needed, rollback via CloudFormation console" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,14 @@
+{
+  "Parameters": {
+    "Environment": "dev",
+    "ProjectName": "bancow"
+  },
+  "Tags": {
+    "Project": "BANCOW",
+    "Environment": "dev",
+    "ManagedBy": "SAM",
+    "Owner": "Platform Team",
+    "CostCenter": "IT-Infrastructure",
+    "Compliance": "PCI-DSS"
+  }
+}

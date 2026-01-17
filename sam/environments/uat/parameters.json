@@ -1,0 +1,14 @@
+{
+  "Parameters": {
+    "Environment": "uat",
+    "ProjectName": "bancow"
+  },
+  "Tags": {
+    "Project": "BANCOW",
+    "Environment": "uat",
+    "ManagedBy": "SAM",
+    "Owner": "Platform Team",
+    "CostCenter": "IT-Infrastructure",
+    "Compliance": "PCI-DSS"
+  }
+}

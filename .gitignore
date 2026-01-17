@@ -1,0 +1,124 @@
+# BANCOW Infrastructure Repository - Git Ignore
+
+# CDK specific
+cdk/cdk.out/
+cdk/dist/
+cdk/*.js
+cdk/*.d.ts
+cdk/**/*.js
+cdk/**/*.d.ts
+cdk/.cdk.staging/
+cdk/cdk.context.json
+cdk/node_modules/
+cdk/package-lock.json
+
+# SAM/CloudFormation build artifacts
+.aws-sam/
+sam/.aws-sam/
+packaged.yaml
+packaged.yml
+sam/packaged.yaml
+sam/packaged.yml
+
+# Environment-specific overrides (never commit credentials)
+*.local.json
+*.override.json
+environments/*/secrets.json
+sam/environments/*/secrets.json
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Backup files
+*.bak
+*.backup
+backups/
+
+# AWS CLI cache
+.aws/
+
+# Python (for cfn-lint, SAM CLI, if running locally)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# TypeScript
+*.tsbuildinfo
+
+# Sensitive data
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Terraform state (if mixed with Terraform)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.nyc_output/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Generated documentation
+docs/_build/
+site/
+
+# Drift detection results
+drift-*.json
+
+# Change set files
+changeset-*.json
+
+# Lambda deployment packages
+*.zip
+lambda-packages/
+
+# CDK asset staging
+cdk.staging/
+.cdk.staging/
+
+# SAM template artifacts
+template-output.yaml

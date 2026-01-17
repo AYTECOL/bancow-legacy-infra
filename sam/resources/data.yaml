@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'BANCOW - Application Data Stack: App-specific data resources'
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, uat, prod]
+    Description: Environment name
+  ProjectName:
+    Type: String
+    Default: bancow
+    Description: Project name for resource naming
+  KmsKeyId:
+    Type: String
+    Description: KMS key ID from CDK base stack
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, 'prod']
+
+Resources:
+  # Secrets for SOAP endpoints and credentials
+  # NOTE: Actual secret values must be set manually or via CI/CD
+  SoapEndpointSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-soap-endpoint'
+      Description: SOAP service endpoint configuration
+      KmsKeyId: !Ref KmsKeyId
+      SecretString: !Sub |
+        {
+          "endpoint": "https://soap.example.com/service",
+          "timeout": 30000,
+          "retryAttempts": 3
+        }
+      Tags:
+        - Key: Project
+          Value: BANCOW
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+  SoapCredentialsSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-soap-credentials'
+      Description: SOAP service authentication credentials
+      KmsKeyId: !Ref KmsKeyId
+      SecretString: !Sub |
+        {
+          "username": "CHANGE_ME",
+          "password": "CHANGE_ME",
+          "clientId": "CHANGE_ME"
+        }
+      Tags:
+        - Key: Project
+          Value: BANCOW
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+        - Key: Sensitive
+          Value: 'true'
+
+  # SSM Parameters for application configuration
+  SoapTimeoutParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${ProjectName}/${Environment}/soap/timeout'
+      Type: String
+      Value: '30000'
+      Description: SOAP request timeout in milliseconds
+      Tags:
+        Project: BANCOW
+        Environment: !Ref Environment
+
+  SoapRetryParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${ProjectName}/${Environment}/soap/retry-attempts'
+      Type: String
+      Value: '3'
+      Description: Number of SOAP retry attempts
+      Tags:
+        Project: BANCOW
+        Environment: !Ref Environment
+
+  CacheTtlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/${ProjectName}/${Environment}/cache/ttl'
+      Type: String
+      Value: !If [IsProd, '3600', '300']
+      Description: Cache TTL in seconds
+      Tags:
+        Project: BANCOW
+        Environment: !Ref Environment
+
+Outputs:
+  SoapEndpointSecretArn:
+    Description: SOAP Endpoint Secret ARN
+    Value: !Ref SoapEndpointSecret
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-soap-endpoint-secret'
+
+  SoapCredentialsSecretArn:
+    Description: SOAP Credentials Secret ARN
+    Value: !Ref SoapCredentialsSecret
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-soap-credentials-secret'
