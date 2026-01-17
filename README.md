@@ -18,8 +18,6 @@ bancow-infra/
 │   │   │   └── iam-stack.ts    # IAM roles, OIDC, boundaries
 │   │   ├── s3/
 │   │   │   └── s3-stack.ts     # S3 buckets (artifacts, logs, data)
-│   │   ├── security/
-│   │   │   └── kms-stack.ts    # KMS encryption keys
 │   │   └── bancow-base-stack.ts # Orchestrator stack
 │   ├── package.json
 │   ├── tsconfig.json
@@ -65,7 +63,7 @@ bancow-infra/
 1. **AWS Account** with appropriate permissions
 2. **GitHub Secrets** configured:
    - `AWS_DEPLOY_ROLE_ARN`: IAM role ARN for OIDC authentication
-3. **Existing base resources** (VPC, S3 buckets, KMS keys) created by legacy CloudFormation
+3. **Existing base resources** (VPC, S3 buckets) created by legacy CloudFormation
 
 ### Deployment Order
 
@@ -94,7 +92,6 @@ npm run deploy -- -c environment=dev -c githubOrg=your-org -c githubRepo=bancow-
 **What CDK Does:**
 - Imports existing VPC, subnets, security groups
 - Imports existing S3 buckets (artifacts, logs, data)
-- Imports existing KMS keys
 - Creates/updates OIDC provider for GitHub Actions
 - Creates deployment roles with permission boundaries
 - Publishes all resource IDs to SSM at `/{project}/{env}/*`
@@ -117,7 +114,7 @@ sam deploy --config-env dev
 ```
 
 **What SAM Does:**
-- Reads VPC, subnet, KMS, S3 info from SSM
+- Reads VPC, subnet, S3 info from SSM
 - Creates Lambda functions and API Gateway
 - Sets up CloudWatch alarms and logs
 
@@ -144,13 +141,10 @@ All base infrastructure is published to SSM:
 │   ├── github-actions-role-arn
 │   ├── lambda-execution-role-arn
 │   └── github-oidc-provider-arn
-├── s3/
-│   ├── artifacts-bucket-name
-│   ├── logs-bucket-name
-│   └── data-bucket-name
-└── kms/
-    ├── main-key-id
-    └── main-key-arn
+└── s3/
+    ├── artifacts-bucket-name
+    ├── logs-bucket-name
+    └── data-bucket-name
 ```
 
 ## 🔧 Local Development
@@ -177,7 +171,6 @@ sam local invoke FunctionName --event events/test.json
 
 ### PCI-DSS Compliance
 
-- All data encrypted at rest (KMS)
 - All data encrypted in transit (TLS)
 - VPC isolation for Lambda functions
 - WAF protection on API Gateway (production)

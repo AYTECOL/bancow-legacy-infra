@@ -29,9 +29,6 @@ Parameters:
   LogsBucketName:
     Type: String
     Description: Logs bucket name from CDK base stack
-  KmsKeyId:
-    Type: String
-    Description: KMS key ID from CDK base stack
 
 Globals:
   Function:
@@ -92,14 +89,12 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-soap-integration'
       RetentionInDays: !If [IsProd, 90, 30]
-      KmsKeyId: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KmsKeyId}'
 
   ApiHandlerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-api-handler'
       RetentionInDays: !If [IsProd, 90, 30]
-      KmsKeyId: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KmsKeyId}'
 
 Outputs:
   SoapIntegrationFunctionArn:

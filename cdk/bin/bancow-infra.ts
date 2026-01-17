@@ -26,7 +26,7 @@ new BancowBaseStack(app, `BancowBaseStack-${environment}`, {
     region: region,
   },
   stackName: `bancow-${environment}-base`,
-  description: `BANCOW ${environment.toUpperCase()} - Base Infrastructure (VPC, IAM, S3, KMS) - Managed by CDK`,
+  description: `BANCOW ${environment.toUpperCase()} - Base Infrastructure (VPC, IAM, S3) - Managed by CDK`,
   tags: {
     ...commonTags,
     Environment: environment,

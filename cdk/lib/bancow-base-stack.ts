@@ -3,7 +3,6 @@ import { Construct } from 'constructs';
 import { VpcStack } from './network/vpc-stack';
 import { IamStack } from './iam/iam-stack';
 import { S3Stack } from './s3/s3-stack';
-import { KmsStack } from './security/kms-stack';
 
 export interface BancowBaseStackProps extends cdk.StackProps {
   environment: string;
@@ -16,7 +15,6 @@ export interface BancowBaseStackProps extends cdk.StackProps {
  * - Network (VPC, Subnets, Security Groups)
  * - IAM (OIDC, Roles, Boundaries)
  * - S3 (Buckets for artifacts, logs, data)
- * - Security (KMS keys)
  * 
  * IMPORTANT: This stack imports existing resources created by CloudFormation.
  * It does NOT create new infrastructure, only imports and publishes to SSM.
@@ -34,7 +32,6 @@ export class BancowBaseStack extends cdk.Stack {
   public readonly vpcStack: VpcStack;
   public readonly iamStack: IamStack;
   public readonly s3Stack: S3Stack;
-  public readonly kmsStack: KmsStack;
 
   constructor(scope: Construct, id: string, props: BancowBaseStackProps) {
     super(scope, id, props);
@@ -46,13 +43,7 @@ export class BancowBaseStack extends cdk.Stack {
     const githubOrg = this.node.tryGetContext('githubOrg') || 'your-org';
     const githubRepo = this.node.tryGetContext('githubRepo') || 'bancow-infra';
 
-    // Deploy KMS stack first (needed for encryption)
-    this.kmsStack = new KmsStack(this, 'KmsStack', {
-      environment,
-      projectName,
-    });
-
-    // Deploy S3 stack (buckets may reference KMS keys)
+    // Deploy S3 stack
     this.s3Stack = new S3Stack(this, 'S3Stack', {
       environment,
       projectName,
@@ -73,7 +64,6 @@ export class BancowBaseStack extends cdk.Stack {
     });
 
     // Add dependencies to ensure proper deployment order
-    this.s3Stack.addDependency(this.kmsStack);
     this.iamStack.addDependency(this.vpcStack);
     this.iamStack.addDependency(this.s3Stack);
 
@@ -104,7 +94,6 @@ This stack imports and manages references to existing base infrastructure:
 - VPC and networking resources
 - IAM roles and OIDC provider for GitHub Actions
 - S3 buckets (artifacts, logs, data)
-- KMS encryption keys
 
 All resources are published to SSM Parameter Store at:
   /${projectName}/${environment}/*

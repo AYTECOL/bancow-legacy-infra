@@ -1,7 +1,7 @@
 {
   "name": "bancow-infra-cdk",
   "version": "1.0.0",
-  "description": "BANCOW Base Infrastructure (CDK) - Stateful resources: VPC, IAM, S3, KMS",
+  "description": "BANCOW Base Infrastructure (CDK) - Stateful resources: VPC, IAM, S3",
   "bin": {
     "bancow-infra": "bin/bancow-infra.js"
   },

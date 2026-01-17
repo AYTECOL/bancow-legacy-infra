@@ -13,7 +13,7 @@ Parameters:
     Description: Project name for resource naming
 
 # This template uses nested stacks to organize application resources
-# All base infrastructure (VPC, IAM, S3, KMS) is consumed from SSM parameters
+# All base infrastructure (VPC, IAM, S3) is consumed from SSM parameters
 # published by the CDK base stack
 
 Resources:
@@ -34,8 +34,6 @@ Resources:
         # Consume S3 resources from SSM
         ArtifactsBucketName: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/s3/artifacts-bucket-name}}'
         LogsBucketName: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/s3/logs-bucket-name}}'
-        # Consume KMS resources from SSM
-        KmsKeyId: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/kms/main-key-id}}'
       Tags:
         - Key: Project
           Value: BANCOW
@@ -78,8 +76,6 @@ Resources:
       Parameters:
         Environment: !Ref Environment
         ProjectName: !Ref ProjectName
-        # Consume KMS resources from SSM
-        KmsKeyId: !Sub '{{resolve:ssm:/${ProjectName}/${Environment}/kms/main-key-id}}'
       Tags:
         - Key: Project
           Value: BANCOW

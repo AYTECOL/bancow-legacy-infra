@@ -11,9 +11,6 @@ Parameters:
     Type: String
     Default: bancow
     Description: Project name for resource naming
-  KmsKeyId:
-    Type: String
-    Description: KMS key ID from CDK base stack
 
 Conditions:
   IsProd: !Equals [!Ref Environment, 'prod']
@@ -26,7 +23,6 @@ Resources:
     Properties:
       Name: !Sub '${ProjectName}-${Environment}-soap-endpoint'
       Description: SOAP service endpoint configuration
-      KmsKeyId: !Ref KmsKeyId
       SecretString: !Sub |
         {
           "endpoint": "https://soap.example.com/service",
@@ -46,7 +42,6 @@ Resources:
     Properties:
       Name: !Sub '${ProjectName}-${Environment}-soap-credentials'
       Description: SOAP service authentication credentials
-      KmsKeyId: !Ref KmsKeyId
       SecretString: !Sub |
         {
           "username": "CHANGE_ME",
