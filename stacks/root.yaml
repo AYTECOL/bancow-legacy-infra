@@ -75,9 +75,6 @@ Resources:
   # App Stack - Lambda, API Gateway
   AppStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - SecurityStack
-      - DataStack
     Properties:
       TemplateURL: app.yaml
       Parameters:
