@@ -89,4 +89,4 @@ Outputs:
     Description: Name of S3 bucket for Lambda artifacts
     Value: !Ref ArtifactBucket
     Export:
-      Name: !Sub 'bancow-artifacts-bucket-${Environment}'
+      Name: !Sub 'bancow-artifacts-${Environment}'
