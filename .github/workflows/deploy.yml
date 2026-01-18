@@ -59,20 +59,6 @@ jobs:
         with:
           use-installer: true
 
-      - name: Create SAM deployment bucket if not exists
-        run: |
-          BUCKET_NAME="bancow-dev-sam-deployment"
-          if ! aws s3 ls "s3://${BUCKET_NAME}" 2>&1 > /dev/null; then
-            echo "Creating S3 bucket: ${BUCKET_NAME}"
-            aws s3 mb "s3://${BUCKET_NAME}" --region us-east-1
-            aws s3api put-bucket-versioning --bucket "${BUCKET_NAME}" --versioning-configuration Status=Enabled
-            aws s3api put-public-access-block --bucket "${BUCKET_NAME}" \
-              --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-            echo "✅ Bucket created: ${BUCKET_NAME}"
-          else
-            echo "✅ Bucket already exists: ${BUCKET_NAME}"
-          fi
-
       - name: Update artifact version in parameters
         run: |
           jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
@@ -105,7 +91,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'uat')
     runs-on: ubuntu-latest
     environment: uat
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -129,20 +115,6 @@ jobs:
         uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
-
-      - name: Create SAM deployment bucket if not exists
-        run: |
-          BUCKET_NAME="bancow-uat-sam-deployment"
-          if ! aws s3 ls "s3://${BUCKET_NAME}" 2>&1 > /dev/null; then
-            echo "Creating S3 bucket: ${BUCKET_NAME}"
-            aws s3 mb "s3://${BUCKET_NAME}" --region us-east-1
-            aws s3api put-bucket-versioning --bucket "${BUCKET_NAME}" --versioning-configuration Status=Enabled
-            aws s3api put-public-access-block --bucket "${BUCKET_NAME}" \
-              --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-            echo "✅ Bucket created: ${BUCKET_NAME}"
-          else
-            echo "✅ Bucket already exists: ${BUCKET_NAME}"
-          fi
 
       - name: Update artifact version in parameters
         run: |
@@ -178,7 +150,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     runs-on: ubuntu-latest
     environment: prod
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -202,20 +174,6 @@ jobs:
         uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
-
-      - name: Create SAM deployment bucket if not exists
-        run: |
-          BUCKET_NAME="bancow-prod-sam-deployment"
-          if ! aws s3 ls "s3://${BUCKET_NAME}" 2>&1 > /dev/null; then
-            echo "Creating S3 bucket: ${BUCKET_NAME}"
-            aws s3 mb "s3://${BUCKET_NAME}" --region us-east-1
-            aws s3api put-bucket-versioning --bucket "${BUCKET_NAME}" --versioning-configuration Status=Enabled
-            aws s3api put-public-access-block --bucket "${BUCKET_NAME}" \
-              --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-            echo "✅ Bucket created: ${BUCKET_NAME}"
-          else
-            echo "✅ Bucket already exists: ${BUCKET_NAME}"
-          fi
 
       - name: Update artifact version in parameters
         run: |
