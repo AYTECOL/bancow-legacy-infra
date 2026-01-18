@@ -66,13 +66,15 @@ jobs:
 
       - name: Deploy to DEV
         run: |
-          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json | tr -d '\n\r')          sam deploy \
+          STACK_NAME="bancow-dev-infra"
+          sam deploy \
+          --stack-name $STACK_NAME \
           --config-file samconfig.toml \
           --config-env dev \
           --template-file stacks/root.yaml \
           --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $PARAMS
+          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
 
   deploy-uat:
     name: Deploy to UAT
