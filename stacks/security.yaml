@@ -49,26 +49,26 @@ Resources:
       Roles:
         - !Ref LambdaExecutionRole
 
-    # Policy for S3 Lambda Artifacts Access
-    S3ArtifactsPolicy:
-      Type: AWS::IAM::Policy
-      Properties:
-        PolicyName: !Sub 'bancow-${Environment}-s3-artifacts-policy'
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:GetObject
-                - s3:GetObjectVersion
-              Resource: !Sub 'arn:aws:s3:::bancow-artifacts-${Environment}/*'
-            - Effect: Allow
-              Action:
-                - s3:ListBucket
-                - s3:GetBucketVersioning
-              Resource: !Sub 'arn:aws:s3:::bancow-artifacts-${Environment}'
-        Roles:
-          - !Ref LambdaExecutionRole
+  # Policy for S3 Lambda Artifacts Access
+  S3ArtifactsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'bancow-${Environment}-s3-artifacts-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource: !Sub 'arn:aws:s3:::bancow-artifacts-${Environment}/*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetBucketVersioning
+            Resource: !Sub 'arn:aws:s3:::bancow-artifacts-${Environment}'
+      Roles:
+        - !Ref LambdaExecutionRole
 
   # Cognito User Pool
   UserPool:
