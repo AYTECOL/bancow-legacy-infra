@@ -71,6 +71,7 @@ jobs:
           --template-file stacks/root.yaml \
           --stack-name bancow-dev-infra \
           --config-env dev \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
           --s3-bucket bancow-dev-sam-deployment \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --parameter-overrides \
@@ -128,6 +129,7 @@ jobs:
             --template-file stacks/root.yaml \
             --stack-name bancow-uat-infra \
             --config-env uat \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --s3-bucket bancow-uat-sam-deployment \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
@@ -187,6 +189,7 @@ jobs:
             --template-file stacks/root.yaml \
             --stack-name bancow-prod-infra \
             --config-env prod \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --s3-bucket bancow-prod-sam-deployment \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --no-execute-changeset \
