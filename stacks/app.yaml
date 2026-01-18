@@ -95,7 +95,6 @@ Resources:
   # Lambda Function - Service Function
   ServiceFunction:
     Type: AWS::Serverless::Function
-    DependsOn: ServiceFunctionLogGroup
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-service-fn'
       Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment})'
@@ -170,18 +169,6 @@ Resources:
       ResourceArn: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${ApiGateway}/stages/${Environment}'
       WebACLArn: !Ref WebACLArn
 
-  # CloudWatch Log Group for Lambda (explicit control)
-  ServiceFunctionLogGroup:
-    Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/bancow-${Environment}-service-fn'
-      RetentionInDays: 30
-      Tags:
-        - Key: Name
-          Value: !Sub 'bancow-${Environment}-service-fn-logs'
-        - Key: Environment
-          Value: !Ref Environment
 
 Outputs:
   ApiUrl:
