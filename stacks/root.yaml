@@ -100,23 +100,15 @@ Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
     Value: !GetAtt AppStack.Outputs.ApiUrl
-    Export:
-      Name: !Sub 'bancow-${Environment}-api-url'
   
   CognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !GetAtt SecurityStack.Outputs.UserPoolClientId
-    Export:
-      Name: !Sub 'bancow-${Environment}-cognito-client-id'
   
   CognitoAuthDomain:
     Description: Cognito Auth Domain
     Value: !GetAtt SecurityStack.Outputs.CognitoAuthDomain
-    Export:
-      Name: !Sub 'bancow-${Environment}-cognito-domain'
   
   CognitoTokenUrl:
     Description: Cognito Token URL
     Value: !GetAtt SecurityStack.Outputs.CognitoTokenUrl
-    Export:
-      Name: !Sub 'bancow-${Environment}-cognito-token-url'
