@@ -71,6 +71,7 @@ jobs:
           --template-file stacks/root.yaml \
           --stack-name bancow-dev-infra \
           --config-env dev \
+          --resolve-s3 \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --parameter-overrides \
           LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} \
@@ -127,6 +128,7 @@ jobs:
             --template-file stacks/root.yaml \
             --stack-name bancow-uat-infra \
             --config-env uat \
+            --resolve-s3 \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 
@@ -185,6 +187,7 @@ jobs:
             --template-file stacks/root.yaml \
             --stack-name bancow-prod-infra \
             --config-env prod \
+            --resolve-s3 \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --no-execute-changeset \
             --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
@@ -202,6 +205,7 @@ jobs:
             --template-file stacks/root.yaml \
             --stack-name bancow-prod-infra \
             --config-env prod \
+            --resolve-s3 \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 
