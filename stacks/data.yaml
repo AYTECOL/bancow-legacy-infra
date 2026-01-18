@@ -34,7 +34,7 @@ Resources:
   ArtifactBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'bancow-${Environment}-artifacts'
+      BucketName: !Sub 'bancow-artifacts-${Environment}'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -46,7 +46,7 @@ Resources:
         RestrictPublicBuckets: true
       Tags:
         - Key: Name
-          Value: !Sub 'bancow-${Environment}-artifacts'
+          Value: !Sub 'bancow-artifacts-${Environment}'
         - Key: Environment
           Value: !Ref Environment
 
@@ -89,4 +89,4 @@ Outputs:
     Description: Name of S3 bucket for Lambda artifacts
     Value: !Ref ArtifactBucket
     Export:
-      Name: !Sub 'bancow-${Environment}-artifact-bucket'
+      Name: !Sub 'bancow-artifacts-bucket-${Environment}'

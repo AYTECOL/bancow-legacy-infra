@@ -4,7 +4,7 @@
     "VpcId": "vpc-xxxxxxxxxxxxxxxxx",
     "PrivateSubnetIds": "subnet-0851f332320188cb3,subnet-00164843a85430f26",
     "LambdaSecurityGroupId": "sg-0560abb16110cb333",
-    "LambdaArtifactBucket": "bancow-artifacts-uat",
+    "LambdaArtifactBucket": "bancow-artifacts-bucket-uat",
     "LambdaArtifactKey": "lambda/bancow-service.zip",
     "LambdaArtifactVersion": "1.0.0",
     "LogLevel": "INFO"
