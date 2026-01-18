@@ -177,7 +177,6 @@ jobs:
 
   notify:
     name: Notify deployment status
-    needs: [deploy-dev, deploy-uat, deploy-prod]
     if: always()
     runs-on: ubuntu-latest
     
