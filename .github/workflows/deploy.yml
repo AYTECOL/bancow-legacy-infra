@@ -69,6 +69,7 @@ jobs:
         run: |
           sam deploy \
           --template-file stacks/root.yaml \
+          --stack-name bancow-dev-infra \
           --config-env dev \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --parameter-overrides \
@@ -124,6 +125,7 @@ jobs:
         run: |
           sam deploy \
             --template-file stacks/root.yaml \
+            --stack-name bancow-uat-infra \
             --config-env uat \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
@@ -181,6 +183,7 @@ jobs:
         run: |
           sam deploy \
             --template-file stacks/root.yaml \
+            --stack-name bancow-prod-infra \
             --config-env prod \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --no-execute-changeset \
@@ -197,6 +200,7 @@ jobs:
         run: |
           sam deploy \
             --template-file stacks/root.yaml \
+            --stack-name bancow-prod-infra \
             --config-env prod \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
