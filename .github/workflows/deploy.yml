@@ -66,13 +66,14 @@ jobs:
 
       - name: Deploy to DEV
         run: |
-          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
+          jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json > params.txt
           sam deploy \
           --config-file samconfig.toml \
           --config-env dev \
           --template-file stacks/root.yaml \
+          --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $PARAMS
+          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $(cat params.txt)
 
   deploy-uat:
     name: Deploy to UAT
@@ -81,7 +82,6 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'uat')
     runs-on: ubuntu-latest
     environment: uat
-    needs: [deploy-dev]
 
     steps:
       - name: Checkout code
@@ -106,13 +106,15 @@ jobs:
 
       - name: Deploy to UAT
         run: |
-          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json)
+          jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json > params_uat.txt
           sam deploy \
+          --config-file samconfig.toml \
           --config-env uat \
           --template-file stacks/root.yaml \
           --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides $PARAMS
+          --parameter-overrides $(cat params_uat.txt)
 
   deploy-prod:
     name: Deploy to PROD
@@ -121,7 +123,6 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     runs-on: ubuntu-latest
     environment: prod
-    needs: [deploy-uat]
 
     steps:
       - name: Checkout code
@@ -146,16 +147,18 @@ jobs:
 
       - name: Deploy to PROD
         run: |
-          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json)
+          jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/prod/parameters.json > params_prod.txt         
           sam deploy \
-          --config-env uat \
+          --config-file samconfig.toml \
+          --config-env prod \
           --template-file stacks/root.yaml \
           --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides $PARAMS
+          --parameter-overrides $(cat params_prod.txt)
   notify:
     name: Notify deployment status
-    needs: [deploy-dev, deploy-uat, deploy-prod]
+    needs: [ deploy-dev, deploy-uat, deploy-prod ]
     if: always()
     runs-on: ubuntu-latest
     steps:
