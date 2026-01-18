@@ -76,6 +76,7 @@ jobs:
           --template-file stacks/root.yaml \
           --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
           --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
 
   deploy-uat:
