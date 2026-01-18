@@ -67,8 +67,10 @@ jobs:
       - name: Deploy to DEV
         run: |
           STACK_NAME="bancow-dev-infra"
+          DEPLOY_BUCKET="bancow-dev-sam-deployment"
           sam deploy \
           --stack-name $STACK_NAME \
+          --s3-bucket $DEPLOY_BUCKET \
           --config-file samconfig.toml \
           --config-env dev \
           --template-file stacks/root.yaml \
