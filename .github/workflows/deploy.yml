@@ -72,7 +72,6 @@ jobs:
           --stack-name bancow-dev-infra \
           --config-env dev \
           --s3-bucket bancow-dev-sam-deployment \
-          --s3-upload-role ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --parameter-overrides \
           LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} \
@@ -130,7 +129,6 @@ jobs:
             --stack-name bancow-uat-infra \
             --config-env uat \
             --s3-bucket bancow-uat-sam-deployment \
-            --s3-upload-role ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 
@@ -190,7 +188,6 @@ jobs:
             --stack-name bancow-prod-infra \
             --config-env prod \
             --s3-bucket bancow-prod-sam-deployment \
-            --s3-upload-role ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --no-execute-changeset \
             --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
@@ -209,7 +206,6 @@ jobs:
             --stack-name bancow-prod-infra \
             --config-env prod \
             --s3-bucket bancow-prod-sam-deployment \
-            --s3-upload-role ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 
