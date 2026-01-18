@@ -67,6 +67,7 @@ jobs:
       - name: Deploy to DEV
         run: |
           sam deploy \
+          --config-file samconfig.toml \
           --config-env dev \
           --template-file stacks/root.yaml \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
@@ -107,6 +108,7 @@ jobs:
       - name: Deploy to UAT
         run: |
           sam deploy \
+            --config-file samconfig.toml \
             --config-env uat \
             --template-file stacks/root.yaml \
             --no-confirm-changeset \
@@ -146,6 +148,7 @@ jobs:
       - name: Deploy to PROD
         run: |
           sam deploy \
+            --config-file samconfig.toml \
             --config-env prod \
             --template-file stacks/root.yaml \
             --no-confirm-changeset \
