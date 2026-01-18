@@ -51,7 +51,6 @@ jobs:
 
       - name: Deploy to DEV
         run: |
-          cd infra
           sam deploy \
           --template-file stacks/root.yaml \
           --config-env dev \
@@ -96,7 +95,6 @@ jobs:
 
       - name: Deploy to UAT (Manual Approval Required)
         run: |
-          cd infra
           sam deploy \
             --template-file stacks/root.yaml \
             --config-env uat \
@@ -143,7 +141,6 @@ jobs:
 
       - name: Create change set
         run: |
-          cd infra
           sam deploy \
             --template-file stacks/root.yaml \
             --config-env prod \
@@ -160,7 +157,6 @@ jobs:
 
       - name: Execute change set (Manual Approval Required)
         run: |
-          cd infra
           sam deploy \
             --template-file stacks/root.yaml \
             --config-env prod \
