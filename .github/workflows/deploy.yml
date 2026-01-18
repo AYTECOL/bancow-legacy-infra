@@ -66,14 +66,13 @@ jobs:
 
       - name: Deploy to DEV
         run: |
-          jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json > params.txt
-          sam deploy \
+          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json | tr -d '\n\r')          sam deploy \
           --config-file samconfig.toml \
           --config-env dev \
           --template-file stacks/root.yaml \
           --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $(cat params.txt)
+          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $PARAMS
 
   deploy-uat:
     name: Deploy to UAT
