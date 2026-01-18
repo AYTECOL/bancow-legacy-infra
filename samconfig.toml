@@ -1,0 +1,76 @@
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "bancow-infra"
+
+# Development Environment
+[dev]
+[dev.deploy.parameters]
+stack_name = "bancow-dev-infra"
+s3_prefix = "bancow-dev"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = [
+  "Environment=dev"
+]
+tags = [
+  "Environment=dev",
+  "Project=bancow-legacy-soap-rest",
+  "ManagedBy=SAM"
+]
+
+[dev.validate.parameters]
+lint = true
+
+# UAT Environment
+[uat]
+[uat.deploy.parameters]
+stack_name = "bancow-uat-infra"
+s3_prefix = "bancow-uat"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = [
+  "Environment=uat"
+]
+tags = [
+  "Environment=uat",
+  "Project=bancow-legacy-soap-rest",
+  "ManagedBy=SAM"
+]
+
+[uat.validate.parameters]
+lint = true
+
+# Production Environment
+[prod]
+[prod.deploy.parameters]
+stack_name = "bancow-prod-infra"
+s3_prefix = "bancow-prod"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = [
+  "Environment=prod"
+]
+tags = [
+  "Environment=prod",
+  "Project=bancow-legacy-soap-rest",
+  "ManagedBy=SAM",
+  "Compliance=required"
+]
+
+[prod.validate.parameters]
+lint = true
+
+# Notes:
+# - dev: automatic deployment (confirm_changeset = false)
+# - uat: manual approval required (confirm_changeset = true)
+# - prod: manual approval + change set review (confirm_changeset = true)
+# 
+# Usage:
+#   sam deploy --config-env dev --parameter-overrides file://environments/dev/parameters.json
+#   sam deploy --config-env uat --parameter-overrides file://environments/uat/parameters.json
+#   sam deploy --config-env prod --parameter-overrides file://environments/prod/parameters.json

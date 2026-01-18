@@ -1,0 +1,193 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  BANCOW Infrastructure - Security Stack
+  IAM Roles, Cognito User Pools, WAF, and Security Policies
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues: [dev, uat, prod]
+
+Resources:
+  # IAM Role for Lambda Execution
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-lambda-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-lambda-execution-role'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Policy for Secrets Manager Access
+  SecretsManagerPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'bancow-${Environment}-secrets-manager-policy'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:bancow-${Environment}-soap-credentials-*'
+      Roles:
+        - !Ref LambdaExecutionRole
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub 'bancow-${Environment}-user-pool'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: false
+      UserPoolTags:
+        Name: !Sub 'bancow-${Environment}-user-pool'
+        Environment: !Ref Environment
+
+  # Cognito User Pool Resource Server
+  UserPoolResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      Identifier: api
+      Name: !Sub 'bancow-${Environment}-api-resource-server'
+      UserPoolId: !Ref UserPool
+      Scopes:
+        - ScopeName: read
+          ScopeDescription: Read access to API
+        - ScopeName: write
+          ScopeDescription: Write access to API
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: UserPoolResourceServer
+    Properties:
+      ClientName: !Sub 'bancow-${Environment}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthScopes:
+        - api/read
+        - api/write
+      SupportedIdentityProviders:
+        - COGNITO
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+
+  # Cognito User Pool Domain
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub 'bancow-${Environment}-auth'
+      UserPoolId: !Ref UserPool
+
+  # WAF Web ACL
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub 'bancow-${Environment}-webacl'
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub 'bancow-${Environment}-webacl'
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub 'bancow-${Environment}-common-rules'
+            SampledRequestsEnabled: true
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub 'bancow-${Environment}-bad-inputs'
+            SampledRequestsEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-webacl'
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  LambdaExecutionRoleArn:
+    Description: ARN of Lambda Execution Role
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub 'bancow-${Environment}-lambda-role-arn'
+
+  UserPoolArn:
+    Description: ARN of Cognito User Pool
+    Value: !GetAtt UserPool.Arn
+    Export:
+      Name: !Sub 'bancow-${Environment}-user-pool-arn'
+
+  UserPoolId:
+    Description: ID of Cognito User Pool
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub 'bancow-${Environment}-user-pool-id'
+
+  UserPoolClientId:
+    Description: ID of Cognito User Pool Client
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub 'bancow-${Environment}-user-pool-client-id'
+
+  CognitoAuthDomain:
+    Description: Cognito Authentication Domain URL
+    Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: !Sub 'bancow-${Environment}-cognito-auth-domain'
+
+  CognitoTokenUrl:
+    Description: Cognito Token Endpoint URL
+    Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
+    Export:
+      Name: !Sub 'bancow-${Environment}-cognito-token-url'
+
+  WebACLArn:
+    Description: ARN of WAF Web ACL
+    Value: !GetAtt WebACL.Arn
+    Export:
+      Name: !Sub 'bancow-${Environment}-webacl-arn'

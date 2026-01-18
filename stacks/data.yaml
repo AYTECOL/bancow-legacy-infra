@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  BANCOW Infrastructure - Data Stack
+  Stateful resources: Secrets Manager, S3 buckets (future: RDS)
+  This stack follows the Stateful Boundary Pattern.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues: [ dev, uat, prod ]
+
+Resources:
+  # SOAP Credentials Secret
+  SoapCredentials:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'bancow-${Environment}-soap-credentials'
+      Description: !Sub 'SOAP credentials for BANCOW Legacy API in ${Environment}'
+      SecretString: !Sub |
+        {
+          "soapUsername": "change-me-${Environment}",
+          "soapPassword": "change-me-${Environment}",
+          "apiKey": "change-me-${Environment}"
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-soap-credentials'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+      ArtifactBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+          BucketName: !Sub 'bancow-${Environment}-artifacts'
+          BucketEncryption:
+            ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: AES256
+          PublicAccessBlockConfiguration:
+            BlockPublicAcls: true
+            BlockPublicPolicy: true
+            IgnorePublicAcls: true
+            RestrictPublicBuckets: true
+          Tags:
+            - Key: Name
+              Value: !Sub 'bancow-${Environment}-artifacts'
+            - Key: Environment
+              Value: !Ref Environment
+
+  # Future: RDS Database (not implemented yet)
+  # DBSubnetGroup:
+  #   Type: AWS::RDS::DBSubnetGroup
+  #   Properties:
+  #     DBSubnetGroupName: !Sub 'bancow-${Environment}-db-subnet-group'
+  #     DBSubnetGroupDescription: Subnet group for BANCOW database
+  #     SubnetIds:
+  #       - !Ref PrivateSubnet1
+  #       - !Ref PrivateSubnet2
+  #
+  # Database:
+  #   Type: AWS::RDS::DBInstance
+  #   Properties:
+  #     DBInstanceIdentifier: !Sub 'bancow-${Environment}-db'
+  #     Engine: postgres
+  #     EngineVersion: '15.3'
+  #     DBInstanceClass: db.t3.micro
+  #     AllocatedStorage: 20
+  #     DBSubnetGroupName: !Ref DBSubnetGroup
+  #     MasterUsername: !Sub '{{resolve:secretsmanager:bancow-${Environment}-db-credentials:SecretString:username}}'
+  #     MasterUserPassword: !Sub '{{resolve:secretsmanager:bancow-${Environment}-db-credentials:SecretString:password}}'
+
+Outputs:
+  SoapCredentialsArn:
+    Description: ARN of SOAP Credentials Secret
+    Value: !Ref SoapCredentials
+    Export:
+      Name: !Sub 'bancow-${Environment}-soap-credentials-arn'
+
+  SoapCredentialsName:
+    Description: Name of SOAP Credentials Secret
+    Value: !Sub 'bancow-${Environment}-soap-credentials'
+    Export:
+      Name: !Sub 'bancow-${Environment}-soap-credentials-name'
+
+    ArtifactBucketName:
+      Description: Name of S3 bucket for Lambda artifacts
+      Value: !Ref ArtifactBucket
+      Export:
+        Name: !Sub 'bancow-${Environment}-artifact-bucket'

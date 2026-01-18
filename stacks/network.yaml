@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  BANCOW Infrastructure - Network Stack (Parameter Documentation)
+  This stack documents network resources that are managed externally.
+  Network resources (VPC, Subnets, Security Groups) are not created here.
+  They are passed as parameters from the root stack.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues: [dev, uat, prod]
+
+# Note: This stack is currently used for documentation purposes only.
+# Network resources are managed externally and passed as parameters to the root stack.
+# 
+# Current network configuration (as of 2026-01):
+# VPC ID: (to be provided via parameters)
+# Private Subnets: 
+#   - subnet-0851f332320188cb3
+#   - subnet-00164843a85430f26
+# Security Group for Lambda:
+#   - sg-0560abb16110cb333
+#
+# If you need to create VPC resources in the future, uncomment and configure below:
+
+# Resources:
+#   VPC:
+#     Type: AWS::EC2::VPC
+#     Properties:
+#       CidrBlock: 10.0.0.0/16
+#       EnableDnsHostnames: true
+#       EnableDnsSupport: true
+#       Tags:
+#         - Key: Name
+#           Value: !Sub 'bancow-${Environment}-vpc'
+#         - Key: Environment
+#           Value: !Ref Environment
+#
+#   PrivateSubnet1:
+#     Type: AWS::EC2::Subnet
+#     Properties:
+#       VpcId: !Ref VPC
+#       CidrBlock: 10.0.1.0/24
+#       AvailabilityZone: !Select [0, !GetAZs '']
+#       Tags:
+#         - Key: Name
+#           Value: !Sub 'bancow-${Environment}-private-subnet-1'
+#
+#   PrivateSubnet2:
+#     Type: AWS::EC2::Subnet
+#     Properties:
+#       VpcId: !Ref VPC
+#       CidrBlock: 10.0.2.0/24
+#       AvailabilityZone: !Select [1, !GetAZs '']
+#       Tags:
+#         - Key: Name
+#           Value: !Sub 'bancow-${Environment}-private-subnet-2'
+
+Outputs:
+  StackStatus:
+    Description: Network stack status
+    Value: Network resources are managed externally

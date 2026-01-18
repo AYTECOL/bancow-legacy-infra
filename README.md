@@ -1,309 +1,370 @@
-# BANCOW Infrastructure
+# BANCOW Infrastructure Repository
 
-Infrastructure as Code (IaC) repository for BANCOW platform using AWS CDK for base infrastructure and AWS SAM for application resources.
+> **Single Source of Truth for AWS Infrastructure**
+> 
+> This repository defines what exists, how it connects, and in what environment.
+> It decides which version of the app runs, but contains NO business logic.
 
-## 🏗️ Architecture Overview
+---
 
-This repository is structured to separate **stateful base infrastructure** (managed by CDK) from **application resources** (managed by SAM):
+## 🏗️ Architecture Conceptual Model
+
+Think in **layers, not services**.
 
 ```
-bancow-infra/
-├── cdk/                         # Base Infrastructure (CDK)
-│   ├── bin/
-│   │   └── bancow-infra.ts     # CDK entry point
-│   ├── lib/
-│   │   ├── network/
-│   │   │   └── vpc-stack.ts    # VPC, subnets, routing, endpoints
-│   │   ├── iam/
-│   │   │   └── iam-stack.ts    # IAM roles, OIDC, boundaries
-│   │   ├── s3/
-│   │   │   └── s3-stack.ts     # S3 buckets (artifacts, logs, data)
-│   │   └── bancow-base-stack.ts # Orchestrator stack
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── cdk.json
-│
-├── sam/                         # Application Infrastructure (SAM)
-│   ├── resources/
-│   │   ├── root.yaml           # Root stack (nested stacks)
-│   │   ├── app.yaml            # Lambda functions
-│   │   ├── apigw.yaml          # API Gateway, WAF
-│   │   └── data.yaml           # App-level data resources
-│   ├── environments/
-│   │   ├── dev/parameters.json
-│   │   ├── uat/parameters.json
-│   │   └── prod/parameters.json
-│   └── samconfig.toml
-│
-├── .github/workflows/
-│   └── deploy-infra.yml        # CI/CD pipeline (CDK → SAM)
-│
-└── README.md                    # This file
+┌──────────────────────────────┐
+│ Root (orchestration)         │  ← Entry point, coordinates all stacks
+├──────────────────────────────┤
+│ Network (VPC / Subnets)      │  ← Parameters only (externally managed)
+├──────────────────────────────┤
+│ Security (IAM / SG / Cognito)│  ← Roles, policies, authentication
+├──────────────────────────────┤
+│ Data (S3 / Secrets / DB)     │  ← Stateful resources
+├──────────────────────────────┤
+│ App (Lambda / API)           │  ← Application deployment unit
+├──────────────────────────────┤
+│ Async (SQS / SFN)            │  ← Future: Message queues, workflows
+└──────────────────────────────┘
 ```
 
-## 🔑 Ownership Rules (CRITICAL)
+### Key Principles
 
-### ❌ NEVER
+✅ Each layer has a **single responsibility**  
+✅ Each layer can **evolve independently**  
+✅ Each layer can be **deployed in a controlled manner**  
+✅ Use **Parameters**, NOT `Fn::ImportValue`  
+✅ Explicit naming: `bancow-{env}-{stack}-{resource}`
 
-- **Never deploy infrastructure from `bancow-app` repository**
-- **Never create VPC, IAM base roles, or shared S3 buckets in SAM**
-- **Never skip CDK deployment before SAM**
+---
 
-### ✅ ALWAYS
+## 📂 Repository Structure
 
-- **Always deploy CDK before SAM**
-- **CDK publishes outputs to SSM Parameter Store**
-- **SAM consumes base resources from SSM**
-- **All infrastructure changes happen in `bancow-infra` repository**
+```
+infra/
+├─ stacks/
+│  ├─ root.yaml              # Orchestrates all stacks
+│  ├─ network.yaml           # Network documentation (externally managed)
+│  ├─ security.yaml          # IAM, Cognito, WAF
+│  ├─ data.yaml              # Secrets Manager, S3
+│  ├─ app.yaml               # Lambda, API Gateway
+│  └─ async/                 # Future: SQS, Step Functions
+│      └─ README.md
+│
+├─ environments/
+│  ├─ dev/
+│  │   └─ parameters.json    # Dev environment config
+│  ├─ uat/
+│  │   └─ parameters.json    # UAT environment config
+│  └─ prod/
+│      └─ parameters.json    # Prod environment config
+│
+├─ .github/
+│  └─ workflows/
+│      ├─ validate.yml       # CI: Validation
+│      └─ deploy.yml         # CD: Deployment
+│
+├─ samconfig.toml            # SAM CLI configuration per environment
+└─ README.md                 # This file
+```
 
-## 🚀 Deployment Process
+---
+
+## 🔐 Stack Responsibilities
+
+### 1. Root Stack (Orchestrator Pattern)
+**File**: `stacks/root.yaml`
+
+- Coordinates all other stacks
+- Does NOT create resources directly
+- Passes parameters between stacks
+- Entry point for deployments
+
+**Never put**: Lambda functions, VPC, databases
+
+### 2. Network Stack (Infrastructure Boundary Pattern)
+**File**: `stacks/network.yaml`
+
+- Documents externally managed network resources
+- Currently: VPC, Subnets, Security Groups are external
+- Future: Can be used to create VPC if needed
+
+**Currently**: Parameter documentation only
+
+### 3. Security Stack (Least Privilege Pattern)
+**File**: `stacks/security.yaml`
+
+**Creates**:
+- IAM Roles (explicit, no automatic creation)
+- Cognito User Pool, Client, Domain
+- WAF Web ACL
+- Security policies
+
+**Naming**:
+- `bancow-{env}-lambda-execution-role`
+- `bancow-{env}-user-pool`
+- `bancow-{env}-webacl`
+
+### 4. Data Stack (Stateful Boundary Pattern)
+**File**: `stacks/data.yaml`
+
+**Creates**:
+- Secrets Manager (SOAP credentials)
+- Future: S3 buckets, RDS databases
+
+**Important**: Stateful resources, handle with care during updates
+
+### 5. App Stack (Deployment Unit Pattern)
+**File**: `stacks/app.yaml`
+
+**Creates**:
+- Lambda functions (using artifacts from app repo)
+- API Gateway
+- CloudWatch Log Groups
+
+**Uses artifacts from**:
+- S3 bucket specified in parameters
+- Version specified in parameters
+- Does NOT build code
+
+**Does NOT create**: VPC, IAM roles, databases
+
+### 6. Async Stack (Future)
+**Folder**: `stacks/async/`
+
+**Status**: Placeholder for future SQS and Step Functions
+
+---
+
+## 🚀 Deployment Guide
 
 ### Prerequisites
 
-1. **AWS Account** with appropriate permissions
-2. **GitHub Secrets** configured:
-   - `AWS_DEPLOY_ROLE_ARN`: IAM role ARN for OIDC authentication
-3. **Existing base resources** (VPC, S3 buckets) created by legacy CloudFormation
+1. **AWS CLI** configured with appropriate credentials
+2. **SAM CLI** installed (`sam --version`)
+3. **Permissions**: CloudFormation, IAM, Lambda, API Gateway, Cognito, WAF, Secrets Manager
+4. **S3 Bucket** for CloudFormation artifacts (SAM creates automatically)
+5. **Lambda Artifacts** uploaded to S3 by the app repo CI/CD
 
-### Deployment Order
+### Environment Strategy
 
-```mermaid
-graph LR
-    A[CDK Deploy] -->|Publishes to SSM| B[SAM Deploy]
-    B -->|Consumes from SSM| C[Application Running]
-```
+| Environment | Deployment | Approval | Use Case |
+|-------------|-----------|----------|----------|
+| **dev**     | Automatic | None     | Development, testing |
+| **uat**     | Manual    | Required | Pre-production validation |
+| **prod**    | Manual    | Required + Changeset Review | Production |
 
-### 1. CDK Base Infrastructure
+### Deployment Commands
 
-The CDK stack **imports existing resources** and publishes their IDs/ARNs to SSM Parameter Store:
-
-```bash
-cd cdk
-npm install
-npm run build
-
-# Synthesize and review
-npm run synth -- -c environment=dev
-
-# Deploy to specific environment
-npm run deploy -- -c environment=dev -c githubOrg=your-org -c githubRepo=bancow-infra
-```
-
-**What CDK Does:**
-- Imports existing VPC, subnets, security groups
-- Imports existing S3 buckets (artifacts, logs, data)
-- Creates/updates OIDC provider for GitHub Actions
-- Creates deployment roles with permission boundaries
-- Publishes all resource IDs to SSM at `/{project}/{env}/*`
-
-### 2. SAM Application Resources
-
-SAM consumes base infrastructure from SSM and deploys application resources:
+#### 1. Validate Templates
 
 ```bash
-cd sam
-
-# Validate templates
-sam validate --template resources/root.yaml --lint
-
-# Build
-sam build --template resources/root.yaml --use-container
-
-# Deploy to specific environment
-sam deploy --config-env dev
+# Validate all templates
+sam validate --template stacks/root.yaml --lint
+sam validate --template stacks/security.yaml --lint
+sam validate --template stacks/data.yaml --lint
+sam validate --template stacks/app.yaml --lint
 ```
 
-**What SAM Does:**
-- Reads VPC, subnet, S3 info from SSM
-- Creates Lambda functions and API Gateway
-- Sets up CloudWatch alarms and logs
-
-## 📋 Environment Configuration
-
-### Environments
-
-- **dev**: Development environment (auto-deploys from `develop` branch)
-- **uat**: User Acceptance Testing (manual workflow dispatch)
-- **prod**: Production (auto-deploys from `main` branch)
-
-### SSM Parameter Structure
-
-All base infrastructure is published to SSM:
-
-```
-/bancow/{env}/
-├── network/
-│   ├── vpc-id
-│   ├── private-subnet-ids
-│   ├── public-subnet-ids
-│   └── lambda-sg-id
-├── iam/
-│   ├── github-actions-role-arn
-│   ├── lambda-execution-role-arn
-│   └── github-oidc-provider-arn
-└── s3/
-    ├── artifacts-bucket-name
-    ├── logs-bucket-name
-    └── data-bucket-name
-```
-
-## 🔧 Local Development
-
-### CDK Development
+#### 2. Deploy to Development
 
 ```bash
-cd cdk
-npm install
-npm run build
-npm run test        # Run unit tests
-npm run watch       # Watch for changes
+cd infra
+sam deploy \
+  --template-file stacks/root.yaml \
+  --config-env dev \
+  --parameter-overrides $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 ```
 
-### SAM Development
+#### 3. Deploy to UAT (Manual Approval)
 
 ```bash
-cd sam
-sam local start-api --template resources/root.yaml
-sam local invoke FunctionName --event events/test.json
+cd infra
+sam deploy \
+  --template-file stacks/root.yaml \
+  --config-env uat \
+  --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 ```
 
-## 🔐 Security & Compliance
+**Note**: Requires manual confirmation of changeset
 
-### PCI-DSS Compliance
-
-- All data encrypted in transit (TLS)
-- VPC isolation for Lambda functions
-- WAF protection on API Gateway (production)
-- Secrets stored in AWS Secrets Manager
-
-### Permission Boundaries
-
-Deployment roles use permission boundaries to prevent:
-- Deletion of critical IAM resources
-- Modification of organization settings
-- Access to other AWS accounts
-
-## 📊 Monitoring & Observability
-
-- **CloudWatch Logs**: All Lambda and API Gateway logs
-- **X-Ray Tracing**: Enabled on all Lambda functions and API Gateway
-- **CloudWatch Alarms**: API error rate and latency monitoring
-- **Metrics**: Custom metrics via Lambda Powertools
-
-## 🛠️ Operations
-
-### Viewing Deployed Resources
+#### 4. Deploy to Production (Change Set + Approval)
 
 ```bash
-# List CDK stacks
-aws cloudformation list-stacks --query "StackSummaries[?contains(StackName, 'bancow')]"
-
-# Get stack outputs
-aws cloudformation describe-stacks --stack-name bancow-dev-base
-
-# View SSM parameters
-aws ssm get-parameters-by-path --path /bancow/dev/ --recursive
+cd infra
+sam deploy \
+  --template-file stacks/root.yaml \
+  --config-env prod \
+  --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
 ```
 
-### Rollback
+**Note**: Review changeset carefully before approving
+
+### Deployment Order (First Time)
+
+When deploying for the first time, deploy stacks individually:
 
 ```bash
-# CDK
-cd cdk
-npm run deploy -- -c environment=dev --rollback
+# 1. Security Stack
+sam deploy --template-file stacks/security.yaml --stack-name bancow-dev-security --parameter-overrides Environment=dev
 
-# SAM
-cd sam
-sam deploy --config-env dev --no-execute-changeset
+# 2. Data Stack
+sam deploy --template-file stacks/data.yaml --stack-name bancow-dev-data --parameter-overrides Environment=dev
+
+# 3. App Stack (requires outputs from previous stacks)
+sam deploy --template-file stacks/app.yaml --stack-name bancow-dev-app --parameter-overrides file://environments/dev/parameters.json
+
+# Or deploy all at once via root
+sam deploy --template-file stacks/root.yaml --stack-name bancow-dev-infra --parameter-overrides file://environments/dev/parameters.json
 ```
 
-### Secrets Management
+---
 
-Secrets are stored in AWS Secrets Manager and must be set manually or via CI/CD:
+## 🔄 Update Strategy
+
+### Updating a Single Stack
+
+To update only one stack (e.g., app stack):
 
 ```bash
-# Update SOAP credentials
-aws secretsmanager update-secret \
-  --secret-id bancow-dev-soap-credentials \
-  --secret-string '{"username":"user","password":"pass","clientId":"client"}'
+sam deploy \
+  --template-file stacks/app.yaml \
+  --stack-name bancow-dev-app \
+  --parameter-overrides file://environments/dev/parameters.json
 ```
 
-## 📝 Making Changes
+### Promoting Between Environments
 
-### Adding New Base Infrastructure
+The typical flow: **dev → uat → prod**
 
-1. Add resource to appropriate CDK stack in `cdk/lib/`
-2. Publish resource ID/ARN to SSM
-3. Deploy CDK: `cd cdk && npm run deploy`
-4. Update SAM templates to consume from SSM
-5. Deploy SAM: `cd sam && sam deploy`
+1. Deploy and test in **dev**
+2. Update artifact version in `environments/uat/parameters.json`
+3. Deploy to **uat** with manual approval
+4. Validate in **uat**
+5. Update artifact version in `environments/prod/parameters.json`
+6. Deploy to **prod** with manual approval and changeset review
 
-### Adding New Application Resources
+---
 
-1. Add resource to appropriate SAM template in `sam/resources/`
-2. Ensure it consumes base resources from SSM
-3. Update `root.yaml` if creating new nested stack
-4. Deploy: `cd sam && sam deploy`
+## 🧪 CI/CD Integration
 
-### Modifying Existing Resources
+### Repository: App (Business Logic)
 
-1. Update template (CDK or SAM)
-2. Test in dev environment first
-3. Review changeset before applying
-4. Deploy via CI/CD or manually
+**Responsibilities**:
+- Build code
+- Run tests
+- Package artifacts
+- Upload to S3
+- Notify (optional)
 
-## 🧪 Testing
+**Does NOT**: Deploy infrastructure, create AWS resources
 
-### Infrastructure Tests
+### Repository: Infra (This Repo)
 
-```bash
-# CDK unit tests
-cd cdk
-npm test
+**Responsibilities**:
+- Receive approved version from app repo
+- Deploy infrastructure with specified artifact version
+- Promote through environments: dev → uat → prod
 
-# SAM validation
-cd sam
-sam validate --template resources/root.yaml --lint
-```
+---
 
-### Integration Tests
+## 🔒 Naming Convention (Mandatory)
 
-```bash
-# Test API endpoint
-curl https://{api-id}.execute-api.us-east-1.amazonaws.com/dev/health
-```
+**Pattern**: `bancow-{env}-{stack}-{resource}`
 
-## 📚 Documentation
+**Examples**:
+- `bancow-dev-api`
+- `bancow-prod-service-fn`
+- `bancow-uat-soap-credentials`
+- `bancow-dev-lambda-execution-role`
+- `bancow-prod-webacl`
 
-- [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
-- [AWS SAM Documentation](https://docs.aws.amazon.com/serverless-application-model/)
-- [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
+---
 
-## 🤝 Contributing
+## 📋 Parameter Management
 
-1. Create feature branch from `develop`
-2. Make changes following the ownership rules
-3. Test in dev environment
-4. Create pull request
-5. Deploy to UAT for validation
-6. Merge to `main` for production deployment
+### Updating Parameters
+
+1. Edit the appropriate file: `environments/{env}/parameters.json`
+2. Commit changes
+3. Deploy using the updated parameters
+
+### Required Parameters
+
+All environments require:
+- `Environment` (dev, uat, prod)
+- `VpcId` (VPC where resources live)
+- `PrivateSubnetIds` (comma-separated subnet IDs)
+- `LambdaSecurityGroupId` (security group for Lambda)
+- `LambdaArtifactBucket` (S3 bucket with artifacts)
+- `LambdaArtifactKey` (S3 key to artifact)
+- `LambdaArtifactVersion` (version to deploy)
+- `LogLevel` (DEBUG, INFO, WARN, ERROR)
+
+---
+
+## ⚠️ Critical Rules
+
+### ❌ DO NOT
+
+- Use `Fn::ImportValue` (creates hidden dependencies)
+- Put business logic in infrastructure code
+- Hardcode secrets (use Secrets Manager)
+- Mix infrastructure and application code
+- Deploy from app repo
+
+### ✅ DO
+
+- Use Parameters for cross-stack communication
+- Keep stacks focused on single responsibility
+- Version your Lambda artifacts
+- Review changesets before production deployment
+- Tag all resources appropriately
+- Use explicit IAM roles (no automatic creation)
+
+---
+
+## 🆘 Troubleshooting
+
+### Stack Deployment Fails
+
+1. Check CloudFormation events in AWS Console
+2. Verify parameter values in `environments/{env}/parameters.json`
+3. Ensure Lambda artifacts exist in S3
+4. Check IAM permissions
+
+### Nested Stack Errors
+
+1. Ensure child stack templates are accessible (S3 or local path)
+2. Verify TemplateURL in root.yaml
+3. Check parameter passing between stacks
+
+### Lambda Deployment Issues
+
+1. Verify artifact bucket and key in parameters
+2. Check S3 versioning is enabled
+3. Ensure IAM role has permissions
+4. Validate VPC and subnet configuration
+
+---
 
 ## 📞 Support
 
-- **Platform Team**: platform-team@bancow.com
-- **On-Call**: Use PagerDuty escalation
-- **Documentation**: Confluence BANCOW Space
+For issues or questions:
+1. Check CloudFormation stack events
+2. Review SAM CLI logs
+3. Consult AWS documentation
+4. Contact the infrastructure team
 
-## ⚠️ Important Notes
+---
 
-- This repository manages **infrastructure only**
-- Application code lives in `bancow-app` repository
-- Lambda function code is deployed separately
-- CDK imports existing legacy CloudFormation resources
-- Migration from legacy CloudFormation is gradual
+## 📝 Version History
+
+- **2026-01-17**: Initial infrastructure decoupling
+  - Separated infrastructure from app repo
+  - Implemented layered stack architecture
+  - Added multi-environment support (dev, uat, prod)
 
 ---
 
 **Last Updated**: 2026-01-17  
-**Maintained by**: Platform Team  
-**License**: Proprietary - BANCOW
+**Maintained By**: Infrastructure Team

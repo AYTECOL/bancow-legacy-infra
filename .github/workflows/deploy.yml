@@ -1,0 +1,193 @@
+name: Infrastructure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - uat
+          - prod
+      artifact_version:
+        description: 'Lambda artifact version to deploy'
+        required: true
+        type: string
+        default: 'latest'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-dev:
+    name: Deploy to DEV
+    if: github.event.inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    environment: dev
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Update artifact version in parameters
+        run: |
+          jq '.Parameters.LambdaArtifactVersion = "${{ github.event.inputs.artifact_version }}"' \
+            environments/dev/parameters.json > tmp.json
+          mv tmp.json environments/dev/parameters.json
+
+      - name: Deploy to DEV
+        run: |
+          cd infra
+          sam deploy \
+          --template-file stacks/root.yaml \
+          --config-env dev \
+          --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+          --parameter-overrides \
+          LambdaArtifactVersion=${{ github.event.inputs.artifact_version }} \
+          $(cat environments/dev/parameters.json | jq -r '.Parameters | del(.LambdaArtifactVersion) | to_entries | map("\(.key)=\(.value)") | join(" ")')
+
+      - name: Get stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name bancow-dev-infra \
+            --query 'Stacks[0].Outputs' \
+            --output table
+
+  deploy-uat:
+    name: Deploy to UAT
+    if: github.event.inputs.environment == 'uat'
+    runs-on: ubuntu-latest
+    environment: uat
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Update artifact version in parameters
+        run: |
+          jq '.Parameters.LambdaArtifactVersion = "${{ github.event.inputs.artifact_version }}"' \
+            environments/uat/parameters.json > tmp.json
+          mv tmp.json environments/uat/parameters.json
+
+      - name: Deploy to UAT (Manual Approval Required)
+        run: |
+          cd infra
+          sam deploy \
+            --template-file stacks/root.yaml \
+            --config-env uat \
+            --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+            --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+
+      - name: Get stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name bancow-uat-infra \
+            --query 'Stacks[0].Outputs' \
+            --output table
+
+      - name: Notify deployment
+        run: |
+          echo "✅ UAT deployment completed with version ${{ github.event.inputs.artifact_version }}"
+
+  deploy-prod:
+    name: Deploy to PROD
+    if: github.event.inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Update artifact version in parameters
+        run: |
+          jq '.Parameters.LambdaArtifactVersion = "${{ github.event.inputs.artifact_version }}"' \
+            environments/prod/parameters.json > tmp.json
+          mv tmp.json environments/prod/parameters.json
+
+      - name: Create change set
+        run: |
+          cd infra
+          sam deploy \
+            --template-file stacks/root.yaml \
+            --config-env prod \
+            --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+            --no-execute-changeset \
+            --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+
+      - name: Review change set
+        run: |
+          echo "⚠️ PRODUCTION DEPLOYMENT"
+          echo "Change set created. Review it in AWS Console before executing."
+          echo "Stack: bancow-prod-infra"
+          echo "Version: ${{ github.event.inputs.artifact_version }}"
+
+      - name: Execute change set (Manual Approval Required)
+        run: |
+          cd infra
+          sam deploy \
+            --template-file stacks/root.yaml \
+            --config-env prod \
+            --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+            --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+
+      - name: Get stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name bancow-prod-infra \
+            --query 'Stacks[0].Outputs' \
+            --output table
+
+      - name: Notify deployment
+        run: |
+          echo "✅ PROD deployment completed with version ${{ github.event.inputs.artifact_version }}"
+          echo "⚠️ Verify deployment in production environment"
+
+  notify:
+    name: Notify deployment status
+    needs: [deploy-dev, deploy-uat, deploy-prod]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "Deployment to ${{ github.event.inputs.environment }} completed"
+          echo "Artifact version: ${{ github.event.inputs.artifact_version }}"
+          echo "Status: ${{ job.status }}"

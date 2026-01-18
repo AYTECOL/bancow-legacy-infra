@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  BANCOW Infrastructure - Root Orchestrator Stack
+  This stack orchestrates all infrastructure layers without creating resources directly.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues: [dev, uat, prod]
+  
+  # Network parameters (manual or imported)
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where resources will be deployed
+  
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnet IDs for Lambda functions
+  
+  LambdaSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group ID for Lambda functions
+  
+  # App parameters
+  LambdaArtifactBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment artifacts
+  
+  LambdaArtifactKey:
+    Type: String
+    Description: S3 key for Lambda deployment package
+  
+  LambdaArtifactVersion:
+    Type: String
+    Description: Version of the Lambda artifact to deploy
+  
+  LogLevel:
+    Type: String
+    Default: INFO
+    AllowedValues: [DEBUG, INFO, WARN, ERROR]
+    Description: Application log level
+
+Resources:
+  # Network Stack (or just parameters if using existing VPC)
+  # In this case, network is managed externally, so we skip this stack
+  
+  # Security Stack - IAM Roles, Cognito, WAF
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: security.yaml
+      Parameters:
+        Environment: !Ref Environment
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack
+          Value: Security
+  
+  # Data Stack - S3, Secrets Manager
+  DataStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: data.yaml
+      Parameters:
+        Environment: !Ref Environment
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack
+          Value: Data
+  
+  # App Stack - Lambda, API Gateway
+  AppStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - SecurityStack
+      - DataStack
+    Properties:
+      TemplateURL: app.yaml
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !Ref VpcId
+        PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]
+        LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
+        LambdaExecutionRoleArn: !GetAtt SecurityStack.Outputs.LambdaExecutionRoleArn
+        SoapCredentialsArn: !GetAtt DataStack.Outputs.SoapCredentialsArn
+        UserPoolArn: !GetAtt SecurityStack.Outputs.UserPoolArn
+        WebACLArn: !GetAtt SecurityStack.Outputs.WebACLArn
+        LambdaArtifactBucket: !Ref LambdaArtifactBucket
+        LambdaArtifactKey: !Ref LambdaArtifactKey
+        LambdaArtifactVersion: !Ref LambdaArtifactVersion
+        LogLevel: !Ref LogLevel
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack
+          Value: App
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !GetAtt AppStack.Outputs.ApiUrl
+    Export:
+      Name: !Sub 'bancow-${Environment}-api-url'
+  
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !GetAtt SecurityStack.Outputs.UserPoolClientId
+    Export:
+      Name: !Sub 'bancow-${Environment}-cognito-client-id'
+  
+  CognitoAuthDomain:
+    Description: Cognito Auth Domain
+    Value: !GetAtt SecurityStack.Outputs.CognitoAuthDomain
+    Export:
+      Name: !Sub 'bancow-${Environment}-cognito-domain'
+  
+  CognitoTokenUrl:
+    Description: Cognito Token URL
+    Value: !GetAtt SecurityStack.Outputs.CognitoTokenUrl
+    Export:
+      Name: !Sub 'bancow-${Environment}-cognito-token-url'

@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  BANCOW Infrastructure - App Stack
+  Lambda functions and API Gateway (Deployment Unit Pattern)
+  This stack deploys application code but does NOT create VPC, IAM roles, or databases.
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    AllowedValues: [dev, uat, prod]
+  
+  # Network parameters (passed from root)
+  VpcId:
+    Type: String
+    Description: VPC ID for Lambda
+  
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+    Description: Private subnet IDs for Lambda (comma-separated)
+  
+  LambdaSecurityGroupId:
+    Type: String
+    Description: Security Group ID for Lambda
+  
+  # Security parameters (passed from root)
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: ARN of Lambda execution role
+  
+  UserPoolArn:
+    Type: String
+    Description: ARN of Cognito User Pool
+  
+  WebACLArn:
+    Type: String
+    Description: ARN of WAF Web ACL
+  
+  # Data parameters (passed from root)
+  SoapCredentialsArn:
+    Type: String
+    Description: ARN of Secrets Manager secret for SOAP credentials
+  
+  # Artifact parameters (passed from root)
+  LambdaArtifactBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment artifacts
+  
+  LambdaArtifactKey:
+    Type: String
+    Description: S3 key for Lambda deployment package
+  
+  LambdaArtifactVersion:
+    Type: String
+    Description: Version of the Lambda artifact to deploy
+  
+  # Application configuration
+  LogLevel:
+    Type: String
+    Default: INFO
+    AllowedValues: [DEBUG, INFO, WARN, ERROR]
+    Description: Application log level
+
+Mappings:
+  SoapConfig:
+    dev:
+      ALLOWINSECURETLS: 'true'
+      SOAPENDPOINT: 'https://10.40.7.18:8017/bancow/servlet/com.dlya.bantotal.odwsbt_BTPersonas_v1'
+    uat:
+      ALLOWINSECURETLS: 'true'
+      SOAPENDPOINT: 'https://10.40.7.18:8017/bancow/servlet/com.dlya.bantotal.odwsbt_BTPersonas_v1'
+    prod:
+      ALLOWINSECURETLS: 'false'
+      SOAPENDPOINT: 'https://10.40.7.18:8017/bancow/servlet/com.dlya.bantotal.odwsbt_BTPersonas_v1'
+
+Resources:
+  # API Gateway REST API
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'bancow-${Environment}-api'
+      StageName: !Ref Environment
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Authorization,Content-Type'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            Type: COGNITO_USER_POOLS
+            UserPoolArn: !Ref UserPoolArn
+        DefaultAuthorizer: CognitoAuthorizer
+      TracingEnabled: true
+      Tags:
+        Name: !Sub 'bancow-${Environment}-api'
+        Environment: !Ref Environment
+
+  # Lambda Function - Service Function
+  ServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-service-fn'
+      Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment}) - Version ${LambdaArtifactVersion}'
+      Runtime: nodejs22.x
+      Handler: handler.main
+      CodeUri:
+        Bucket: !Ref LambdaArtifactBucket
+        Key: !Ref LambdaArtifactKey
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 30
+      MemorySize: 512
+      Tracing: Active
+      VpcConfig:
+        SubnetIds: !Ref PrivateSubnetIds
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: !Ref LogLevel
+          POWERTOOLS_SERVICE_NAME: 'bancow-legacy-soap-rest'
+          ALLOW_INSECURE_TLS: !FindInMap [SoapConfig, !Ref Environment, ALLOWINSECURETLS]
+          SOAP_ENDPOINT: !FindInMap [SoapConfig, !Ref Environment, SOAPENDPOINT]
+          SOAP_CREDENTIALS_SECRET_ARN: !Ref SoapCredentialsArn
+      Events:
+        GetPhysicalPerson:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /person/physical
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - api/read
+        GetAddresses:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /person/addresses
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - api/read
+        GetNaturalPerson:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /person/natural
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - api/read
+      Tags:
+        Name: !Sub 'bancow-${Environment}-service-fn'
+        Environment: !Ref Environment
+        Version: !Ref LambdaArtifactVersion
+
+  # WAF Web ACL Association
+  WebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${ApiGateway}/stages/${Environment}'
+      WebACLArn: !Ref WebACLArn
+
+  # CloudWatch Log Group for Lambda (explicit control)
+  ServiceFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/bancow-${Environment}-service-fn'
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-service-fn-logs'
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub 'bancow-${Environment}-api-url'
+  
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref ApiGateway
+    Export:
+      Name: !Sub 'bancow-${Environment}-api-id'
+  
+  ServiceFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt ServiceFunction.Arn
+    Export:
+      Name: !Sub 'bancow-${Environment}-service-fn-arn'
+  
+  ServiceFunctionName:
+    Description: Lambda function name
+    Value: !Ref ServiceFunction
+    Export:
+      Name: !Sub 'bancow-${Environment}-service-fn-name'
