@@ -66,14 +66,13 @@ jobs:
 
       - name: Deploy to DEV
         run: |
+          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
           sam deploy \
           --config-file samconfig.toml \
           --config-env dev \
           --template-file stacks/root.yaml \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides \
-          LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} \
-          $(cat environments/dev/parameters.json | jq -r '.Parameters | del(.LambdaArtifactVersion) | to_entries | map("\(.key)=\(.value)") | join(" ")')
+          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $PARAMS
 
   deploy-uat:
     name: Deploy to UAT
@@ -107,13 +106,13 @@ jobs:
 
       - name: Deploy to UAT
         run: |
+          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json)
           sam deploy \
-            --config-file samconfig.toml \
-            --config-env uat \
-            --template-file stacks/root.yaml \
-            --no-confirm-changeset \
-            --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-            --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+          --config-env uat \
+          --template-file stacks/root.yaml \
+          --no-confirm-changeset \
+          --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+          --parameter-overrides $PARAMS
 
   deploy-prod:
     name: Deploy to PROD
@@ -147,14 +146,13 @@ jobs:
 
       - name: Deploy to PROD
         run: |
+          PARAMS=$(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json)
           sam deploy \
-            --config-file samconfig.toml \
-            --config-env prod \
-            --template-file stacks/root.yaml \
-            --no-confirm-changeset \
-            --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-            --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
-
+          --config-env uat \
+          --template-file stacks/root.yaml \
+          --no-confirm-changeset \
+          --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
+          --parameter-overrides $PARAMS
   notify:
     name: Notify deployment status
     needs: [deploy-dev, deploy-uat, deploy-prod]
