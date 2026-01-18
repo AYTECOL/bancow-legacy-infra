@@ -61,29 +61,18 @@ jobs:
 
       - name: Update artifact version in parameters
         run: |
-          jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
-            environments/dev/parameters.json > tmp.json
-          mv tmp.json environments/dev/parameters.json
+          jq ".Parameters.LambdaArtifactVersion = \"${{ env.ARTIFACT_VERSION }}\"" \
+            environments/dev/parameters.json > tmp.json && mv tmp.json environments/dev/parameters.json
 
       - name: Deploy to DEV
         run: |
           sam deploy \
-          --template-file stacks/root.yaml \
-          --stack-name bancow-dev-infra \
           --config-env dev \
-          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-          --s3-bucket bancow-dev-sam-deployment \
+          --template-file stacks/root.yaml \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --parameter-overrides \
           LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} \
           $(cat environments/dev/parameters.json | jq -r '.Parameters | del(.LambdaArtifactVersion) | to_entries | map("\(.key)=\(.value)") | join(" ")')
-
-      - name: Get stack outputs
-        run: |
-          aws cloudformation describe-stacks \
-            --stack-name bancow-dev-infra \
-            --query 'Stacks[0].Outputs' \
-            --output table
 
   deploy-uat:
     name: Deploy to UAT
@@ -92,19 +81,11 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'uat')
     runs-on: ubuntu-latest
     environment: uat
+    needs: [deploy-dev]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set artifact version
-        id: set-version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
-          else
-            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
-          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -114,36 +95,23 @@ jobs:
 
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
 
-      - name: Update artifact version in parameters
+      - name: Set artifact version
         run: |
-          jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
-            environments/uat/parameters.json > tmp.json
-          mv tmp.json environments/uat/parameters.json
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
+          else
+            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          fi
 
-      - name: Deploy to UAT (Manual Approval Required)
+      - name: Deploy to UAT
         run: |
           sam deploy \
-            --template-file stacks/root.yaml \
-            --stack-name bancow-uat-infra \
             --config-env uat \
-            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-            --s3-bucket bancow-uat-sam-deployment \
+            --template-file stacks/root.yaml \
+            --no-confirm-changeset \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
-
-      - name: Get stack outputs
-        run: |
-          aws cloudformation describe-stacks \
-            --stack-name bancow-uat-infra \
-            --query 'Stacks[0].Outputs' \
-            --output table
-
-      - name: Notify deployment
-        run: |
-          echo "✅ UAT deployment completed with version ${{ env.ARTIFACT_VERSION }}"
 
   deploy-prod:
     name: Deploy to PROD
@@ -152,19 +120,11 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     runs-on: ubuntu-latest
     environment: prod
+    needs: [deploy-uat]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set artifact version
-        id: set-version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
-          else
-            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
-          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -174,70 +134,29 @@ jobs:
 
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
 
-      - name: Update artifact version in parameters
+      - name: Set artifact version
         run: |
-          jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
-            environments/prod/parameters.json > tmp.json
-          mv tmp.json environments/prod/parameters.json
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
+          else
+            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          fi
 
-      - name: Create change set
-        run: |
-          sam deploy \
-            --template-file stacks/root.yaml \
-            --stack-name bancow-prod-infra \
-            --config-env prod \
-            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-            --s3-bucket bancow-prod-sam-deployment \
-            --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-            --no-execute-changeset \
-            --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
-
-      - name: Review change set
-        run: |
-          echo "⚠️ PRODUCTION DEPLOYMENT"
-          echo "Change set created. Review it in AWS Console before executing."
-          echo "Stack: bancow-prod-infra"
-          echo "Version: ${{ env.ARTIFACT_VERSION }}"
-
-      - name: Execute change set (Manual Approval Required)
+      - name: Deploy to PROD
         run: |
           sam deploy \
-            --template-file stacks/root.yaml \
-            --stack-name bancow-prod-infra \
             --config-env prod \
-            --s3-bucket bancow-prod-sam-deployment \
+            --template-file stacks/root.yaml \
+            --no-confirm-changeset \
             --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
             --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
-
-      - name: Get stack outputs
-        run: |
-          aws cloudformation describe-stacks \
-            --stack-name bancow-prod-infra \
-            --query 'Stacks[0].Outputs' \
-            --output table
-
-      - name: Notify deployment
-        run: |
-          echo "✅ PROD deployment completed with version ${{ env.ARTIFACT_VERSION }}"
-          echo "⚠️ Verify deployment in production environment"
 
   notify:
     name: Notify deployment status
-    needs: []
+    needs: [deploy-dev, deploy-uat, deploy-prod]
     if: always()
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Deployment summary
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Deployment to ${{ github.event.inputs.environment }} completed"
-            echo "Artifact version: ${{ github.event.inputs.artifact_version }}"
-          else
-            echo "Deployment triggered by push to ${{ github.ref_name }}"
-            echo "Artifact version: ${{ github.sha }}"
-          fi
-          echo "Status: ${{ job.status }}"
+      - name: Summary
+        run: echo "Deployment process finished."
