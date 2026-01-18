@@ -31,6 +31,25 @@ Resources:
         - Key: ManagedBy
           Value: CloudFormation
 
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'bancow-${Environment}-artifacts'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-artifacts'
+        - Key: Environment
+          Value: !Ref Environment
+
   # Future: RDS Database (not implemented yet)
   # DBSubnetGroup:
   #   Type: AWS::RDS::DBSubnetGroup
@@ -65,3 +84,9 @@ Outputs:
     Value: !Sub 'bancow-${Environment}-soap-credentials'
     Export:
       Name: !Sub 'bancow-${Environment}-soap-credentials-name'
+
+  ArtifactBucketName:
+    Description: Name of S3 bucket for Lambda artifacts
+    Value: !Ref ArtifactBucket
+    Export:
+      Name: !Sub 'bancow-${Environment}-artifact-bucket'
