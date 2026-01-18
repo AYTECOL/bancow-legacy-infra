@@ -1,6 +1,11 @@
 name: Infrastructure Deployment
 
 on:
+  push:
+    branches:
+      - dev
+      - nonprod
+      - master
   workflow_dispatch:
     inputs:
       environment:
@@ -24,13 +29,24 @@ permissions:
 jobs:
   deploy-dev:
     name: Deploy to DEV
-    if: github.event.inputs.environment == 'dev'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
     runs-on: ubuntu-latest
     environment: dev
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set artifact version
+        id: set-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
+          else
+            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -45,7 +61,7 @@ jobs:
 
       - name: Update artifact version in parameters
         run: |
-          jq '.Parameters.LambdaArtifactVersion = "${{ github.event.inputs.artifact_version }}"' \
+          jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
             environments/dev/parameters.json > tmp.json
           mv tmp.json environments/dev/parameters.json
 
@@ -56,7 +72,7 @@ jobs:
           --config-env dev \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --parameter-overrides \
-          LambdaArtifactVersion=${{ github.event.inputs.artifact_version }} \
+          LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} \
           $(cat environments/dev/parameters.json | jq -r '.Parameters | del(.LambdaArtifactVersion) | to_entries | map("\(.key)=\(.value)") | join(" ")')
 
       - name: Get stack outputs
@@ -68,13 +84,24 @@ jobs:
 
   deploy-uat:
     name: Deploy to UAT
-    if: github.event.inputs.environment == 'uat'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/nonprod') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'uat')
     runs-on: ubuntu-latest
     environment: uat
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set artifact version
+        id: set-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
+          else
+            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -89,7 +116,7 @@ jobs:
 
       - name: Update artifact version in parameters
         run: |
-          jq '.Parameters.LambdaArtifactVersion = "${{ github.event.inputs.artifact_version }}"' \
+          jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
             environments/uat/parameters.json > tmp.json
           mv tmp.json environments/uat/parameters.json
 
@@ -110,17 +137,28 @@ jobs:
 
       - name: Notify deployment
         run: |
-          echo "✅ UAT deployment completed with version ${{ github.event.inputs.artifact_version }}"
+          echo "✅ UAT deployment completed with version ${{ env.ARTIFACT_VERSION }}"
 
   deploy-prod:
     name: Deploy to PROD
-    if: github.event.inputs.environment == 'prod'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     runs-on: ubuntu-latest
     environment: prod
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set artifact version
+        id: set-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
+          else
+            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -135,7 +173,7 @@ jobs:
 
       - name: Update artifact version in parameters
         run: |
-          jq '.Parameters.LambdaArtifactVersion = "${{ github.event.inputs.artifact_version }}"' \
+          jq '.Parameters.LambdaArtifactVersion = "${{ env.ARTIFACT_VERSION }}"' \
             environments/prod/parameters.json > tmp.json
           mv tmp.json environments/prod/parameters.json
 
@@ -153,7 +191,7 @@ jobs:
           echo "⚠️ PRODUCTION DEPLOYMENT"
           echo "Change set created. Review it in AWS Console before executing."
           echo "Stack: bancow-prod-infra"
-          echo "Version: ${{ github.event.inputs.artifact_version }}"
+          echo "Version: ${{ env.ARTIFACT_VERSION }}"
 
       - name: Execute change set (Manual Approval Required)
         run: |
@@ -172,17 +210,23 @@ jobs:
 
       - name: Notify deployment
         run: |
-          echo "✅ PROD deployment completed with version ${{ github.event.inputs.artifact_version }}"
+          echo "✅ PROD deployment completed with version ${{ env.ARTIFACT_VERSION }}"
           echo "⚠️ Verify deployment in production environment"
 
   notify:
     name: Notify deployment status
+    needs: []
     if: always()
     runs-on: ubuntu-latest
     
     steps:
       - name: Deployment summary
         run: |
-          echo "Deployment to ${{ github.event.inputs.environment }} completed"
-          echo "Artifact version: ${{ github.event.inputs.artifact_version }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Deployment to ${{ github.event.inputs.environment }} completed"
+            echo "Artifact version: ${{ github.event.inputs.artifact_version }}"
+          else
+            echo "Deployment triggered by push to ${{ github.ref_name }}"
+            echo "Artifact version: ${{ github.sha }}"
+          fi
           echo "Status: ${{ job.status }}"
