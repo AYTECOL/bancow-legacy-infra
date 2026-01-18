@@ -39,6 +39,19 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Suspended
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 90
+            NoncurrentVersionExpirationInDays: 30
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -49,6 +62,8 @@ Resources:
           Value: !Sub 'bancow-artifacts-${Environment}'
         - Key: Environment
           Value: !Ref Environment
+        - Key: Purpose
+          Value: Lambda Artifacts Storage
 
   # Future: RDS Database (not implemented yet)
   # DBSubnetGroup:
