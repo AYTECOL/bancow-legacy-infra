@@ -8,6 +8,7 @@ stack_name = "bancow-infra"
 [dev]
 [dev.deploy.parameters]
 stack_name = "bancow-dev-infra"
+s3_bucket = "bancow-dev-sam-deployment"
 s3_prefix = "bancow-dev"
 region = "us-east-1"
 confirm_changeset = false
@@ -28,6 +29,7 @@ lint = true
 [uat]
 [uat.deploy.parameters]
 stack_name = "bancow-uat-infra"
+s3_bucket = "bancow-uat-sam-deployment"
 s3_prefix = "bancow-uat"
 region = "us-east-1"
 confirm_changeset = true
@@ -48,6 +50,7 @@ lint = true
 [prod]
 [prod.deploy.parameters]
 stack_name = "bancow-prod-infra"
+s3_bucket = "bancow-prod-sam-deployment"
 s3_prefix = "bancow-prod"
 region = "us-east-1"
 confirm_changeset = true
