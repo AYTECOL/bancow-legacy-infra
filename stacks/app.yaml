@@ -50,11 +50,7 @@ Parameters:
   LambdaArtifactKey:
     Type: String
     Description: S3 key for Lambda deployment package
-  
-  LambdaArtifactVersion:
-    Type: String
-    Description: Version of the Lambda artifact to deploy
-  
+
   # Application configuration
   LogLevel:
     Type: String
@@ -101,7 +97,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-service-fn'
-      Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment}) - Version ${LambdaArtifactVersion}'
+      Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment})'
       Runtime: nodejs22.x
       Handler: handler.main
       CodeUri:
@@ -157,7 +153,6 @@ Resources:
       Tags:
         Name: !Sub 'bancow-${Environment}-service-fn'
         Environment: !Ref Environment
-        Version: !Ref LambdaArtifactVersion
 
   # WAF Web ACL Association
   WebACLAssociation:

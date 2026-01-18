@@ -297,7 +297,6 @@ All environments require:
 - `LambdaSecurityGroupId` (security group for Lambda)
 - `LambdaArtifactBucket` (S3 bucket with artifacts)
 - `LambdaArtifactKey` (S3 key to artifact)
-- `LambdaArtifactVersion` (version to deploy)
 - `LogLevel` (DEBUG, INFO, WARN, ERROR)
 
 ---

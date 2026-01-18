@@ -31,11 +31,7 @@ Parameters:
   LambdaArtifactKey:
     Type: String
     Description: S3 key for Lambda deployment package
-  
-  LambdaArtifactVersion:
-    Type: String
-    Description: Version of the Lambda artifact to deploy
-  
+
   LogLevel:
     Type: String
     Default: INFO
@@ -88,7 +84,6 @@ Resources:
         WebACLArn: !GetAtt SecurityStack.Outputs.WebACLArn
         LambdaArtifactBucket: !Ref LambdaArtifactBucket
         LambdaArtifactKey: !Ref LambdaArtifactKey
-        LambdaArtifactVersion: !Ref LambdaArtifactVersion
         LogLevel: !Ref LogLevel
       Tags:
         - Key: Environment

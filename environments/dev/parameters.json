@@ -6,7 +6,6 @@
     "LambdaSecurityGroupId": "sg-0560abb16110cb333",
     "LambdaArtifactBucket": "bancow-artifacts-dev",
     "LambdaArtifactKey": "lambda/bancow-service.zip",
-    "LambdaArtifactVersion": "latest",
     "LogLevel": "DEBUG"
   },
   "Tags": {

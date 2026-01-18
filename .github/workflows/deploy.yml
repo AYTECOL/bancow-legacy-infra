@@ -16,11 +16,6 @@ on:
           - dev
           - uat
           - prod
-      artifact_version:
-        description: 'Lambda artifact version to deploy'
-        required: true
-        type: string
-        default: 'latest'
 
 permissions:
   id-token: write
@@ -39,15 +34,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set artifact version
-        id: set-version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
-          else
-            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
-          fi
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -58,11 +44,6 @@ jobs:
         uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
-
-      - name: Update artifact version in parameters
-        run: |
-          jq ".Parameters.LambdaArtifactVersion = \"${{ env.ARTIFACT_VERSION }}\"" \
-            environments/dev/parameters.json > tmp.json && mv tmp.json environments/dev/parameters.json
 
       - name: Deploy to DEV
         run: |
@@ -77,7 +58,7 @@ jobs:
           --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-          --parameter-overrides LambdaArtifactVersion=${{ env.ARTIFACT_VERSION }} $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
+          --parameter-overrides $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
 
   deploy-uat:
     name: Deploy to UAT
@@ -99,14 +80,6 @@ jobs:
 
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
-
-      - name: Set artifact version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
-          else
-            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
-          fi
 
       - name: Deploy to UAT
         run: |
@@ -140,14 +113,6 @@ jobs:
 
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
-
-      - name: Set artifact version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ARTIFACT_VERSION=${{ github.event.inputs.artifact_version }}" >> $GITHUB_ENV
-          else
-            echo "ARTIFACT_VERSION=${{ github.sha }}" >> $GITHUB_ENV
-          fi
 
       - name: Deploy to PROD
         run: |
