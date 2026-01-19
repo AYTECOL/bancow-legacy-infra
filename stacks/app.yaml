@@ -122,7 +122,6 @@ Resources:
           - !Ref LambdaSecurityGroupId
       LoggingConfig:
         LogGroup: !Sub '/aws/lambda/bancow-${Environment}-service-fn'
-        RetentionInDays: 30
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
