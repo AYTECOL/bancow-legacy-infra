@@ -100,18 +100,18 @@ Resources:
       FunctionName: !Sub 'bancow-${Environment}-service-fn'
       Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment})'
       Runtime: nodejs22.x
-      Handler: index.handler
-      InlineCode: |
-        exports.handler = async (event) => {
-          console.log("Infraestructura desplegada. Esperando código real...");
-          return {
-            statusCode: 200,
-            body: JSON.stringify({ message: "Bancow Infra Ready - Awaiting App Deployment" })
-          };
-        };
-      #      CodeUri:
-      #        Bucket: !Ref LambdaArtifactBucket
-      #        Key: !Ref LambdaArtifactKey
+      Handler: handler.main
+      #      InlineCode: |
+      #        exports.handler = async (event) => {
+      #          console.log("Infraestructura desplegada. Esperando código real...");
+      #          return {
+      #            statusCode: 200,
+      #            body: JSON.stringify({ message: "Bancow Infra Ready - Awaiting App Deployment" })
+      #          };
+      #        };
+      CodeUri:
+        Bucket: !Ref LambdaArtifactBucket
+        Key: !Ref LambdaArtifactKey
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 30
       MemorySize: 512
