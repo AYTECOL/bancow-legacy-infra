@@ -56,7 +56,7 @@ jobs:
           --config-env dev \
           --template-file stacks/root.yaml \
           --no-fail-on-empty-changeset \
-          --on-failure DELETE \
+          --on-failure ROLLBACK \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
           --parameter-overrides $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)

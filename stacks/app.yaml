@@ -9,7 +9,7 @@ Parameters:
   Environment:
     Type: String
     Description: Environment name
-    AllowedValues: [dev, uat, prod]
+    AllowedValues: [ dev, uat, prod ]
   
   # Network parameters (passed from root)
   VpcId:
@@ -55,7 +55,7 @@ Parameters:
   LogLevel:
     Type: String
     Default: INFO
-    AllowedValues: [DEBUG, INFO, WARN, ERROR]
+    AllowedValues: [ DEBUG, INFO, WARN, ERROR ]
     Description: Application log level
 
 Mappings:
@@ -109,9 +109,9 @@ Resources:
             body: JSON.stringify({ message: "Bancow Infra Ready - Awaiting App Deployment" })
           };
         };
-#      CodeUri:
-#        Bucket: !Ref LambdaArtifactBucket
-#        Key: !Ref LambdaArtifactKey
+      #      CodeUri:
+      #        Bucket: !Ref LambdaArtifactBucket
+      #        Key: !Ref LambdaArtifactKey
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 30
       MemorySize: 512
@@ -128,8 +128,8 @@ Resources:
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
           POWERTOOLS_SERVICE_NAME: 'bancow-legacy-soap-rest'
-          ALLOW_INSECURE_TLS: !FindInMap [SoapConfig, !Ref Environment, ALLOWINSECURETLS]
-          SOAP_ENDPOINT: !FindInMap [SoapConfig, !Ref Environment, SOAPENDPOINT]
+          ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
+          SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
           SOAP_CREDENTIALS_SECRET_ARN: !Ref SoapCredentialsArn
       Events:
         GetPhysicalPerson:
