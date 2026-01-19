@@ -120,6 +120,9 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
         SecurityGroupIds:
           - !Ref LambdaSecurityGroupId
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/bancow-${Environment}-service-fn'
+        RetentionInDays: 30
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
@@ -163,19 +166,12 @@ Resources:
         Name: !Sub 'bancow-${Environment}-service-fn'
         Environment: !Ref Environment
 
-  ServiceFunctionLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/bancow-${Environment}-service-fn'
-      RetentionInDays: 30
-
   # WAF Web ACL Association
   WebACLAssociation:
     Type: AWS::WAFv2::WebACLAssociation
     DependsOn:
       - ApiGateway
       - ServiceFunction
-      - ServiceFunctionLogGroup
     Properties:
       ResourceArn: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${ApiGateway}/stages/${Environment}'
       WebACLArn: !Ref WebACLArn
