@@ -103,7 +103,7 @@ Resources:
       FunctionName: !Sub 'bancow-${Environment}-service-fn'
       Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment})'
       Runtime: nodejs22.x
-      Handler: dist/index.handler
+      Handler: index.main
 #      InlineCode: |
 #        exports.handler = async (event) => {
 #          console.log("Infraestructura desplegada. Esperando código real...");
