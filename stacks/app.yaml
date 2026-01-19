@@ -94,24 +94,27 @@ Resources:
         Environment: !Ref Environment
 
   # Lambda Function - Service Function
+  # NOTE: Initially deployed with InlineCode placeholder to allow infrastructure deployment
+  # before the app artifact exists in S3. After the app workflow runs and uploads the artifact,
+  # uncomment CodeUri and comment out InlineCode, then redeploy.
   ServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-service-fn'
       Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment})'
       Runtime: nodejs22.x
-      Handler: handler.main
-      #      InlineCode: |
-      #        exports.handler = async (event) => {
-      #          console.log("Infraestructura desplegada. Esperando código real...");
-      #          return {
-      #            statusCode: 200,
-      #            body: JSON.stringify({ message: "Bancow Infra Ready - Awaiting App Deployment" })
-      #          };
-      #        };
-      CodeUri:
-        Bucket: !Ref LambdaArtifactBucket
-        Key: !Ref LambdaArtifactKey
+      Handler: index.handler
+      InlineCode: |
+        exports.handler = async (event) => {
+          console.log("Infraestructura desplegada. Esperando código real...");
+          return {
+            statusCode: 200,
+            body: JSON.stringify({ message: "Bancow Infra Ready - Awaiting App Deployment" })
+          };
+        };
+      # CodeUri:
+      #   Bucket: !Ref LambdaArtifactBucket
+      #   Key: !Ref LambdaArtifactKey
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 30
       MemorySize: 512
