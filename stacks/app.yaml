@@ -171,6 +171,7 @@ Resources:
     DependsOn:
       - ApiGateway
       - ServiceFunction
+      - ApiGatewayStage
     Properties:
       ResourceArn: !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${ApiGateway}/stages/${Environment}'
       WebACLArn: !Ref WebACLArn
