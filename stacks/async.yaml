@@ -78,26 +78,28 @@ Resources:
     Type: AWS::Logs::ResourcePolicy
     Properties:
       PolicyName: !Sub 'bancow-${Environment}-sf-log-policy'
-      PolicyDocument: !Sub >
-        {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Sid": "AllowStepFunctionsLogging",
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "states.amazonaws.com"
-              },
-              "Action": [
-                "logs:CreateLogStream",
-                "logs:PutLogEvents",
-                "logs:DescribeLogGroups",
-                "logs:DescribeLogStreams"
-              ],
-              "Resource": "${StateMachineLogGroup.Arn}:*"
-            }
-          ]
-        }
+      PolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AllowStepFunctionsLogging",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "states.amazonaws.com"
+                },
+                "Action": [
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents",
+                  "logs:DescribeLogGroups",
+                  "logs:DescribeLogStreams"
+                ],
+                "Resource": "${LogGroupArn}:*"
+              }
+            ]
+          }
+        - LogGroupArn: !GetAtt StateMachineLogGroup.Arn
 
   # Lambda Function - Starter (initiates Step Functions)
   StarterFunction:
