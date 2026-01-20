@@ -269,6 +269,7 @@ Resources:
     Type: AWS::Serverless::StateMachine
     DependsOn:
       - StateMachineLogGroup
+      - StateMachineLogPolicy
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-process-x'
       Type: EXPRESS
