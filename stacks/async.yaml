@@ -61,8 +61,9 @@ Resources:
   # CloudWatch Log Group for Step Functions
   StateMachineLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
-      LogGroupName: !Sub '/aws/states/bancow-${Environment}-v2-person-natural'
       RetentionInDays: 14
       Tags:
         - Key: Name
