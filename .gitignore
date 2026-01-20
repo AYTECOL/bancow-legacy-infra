@@ -1,16 +1,5 @@
 # BANCOW Infrastructure Repository - Git Ignore
 
-# CDK specific
-cdk/cdk.out/
-cdk/dist/
-cdk/*.js
-cdk/*.d.ts
-cdk/**/*.js
-cdk/**/*.d.ts
-cdk/.cdk.staging/
-cdk/cdk.context.json
-cdk/node_modules/
-
 # SAM/CloudFormation build artifacts
 .aws-sam/
 sam/.aws-sam/

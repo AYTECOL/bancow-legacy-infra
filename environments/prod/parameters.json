@@ -6,6 +6,8 @@
     "LambdaSecurityGroupId": "sg-0560abb16110cb333",
     "LambdaArtifactBucket": "bancow-artifacts-prod",
     "LambdaArtifactKey": "lambda/bancow-service.zip",
+    "AsyncArtifactBucket": "bancow-artifacts-prod",
+    "AsyncArtifactKey": "workflows-v2/bancow-workflows-v2.zip",
     "LogLevel": "WARN"
   },
   "Tags": {

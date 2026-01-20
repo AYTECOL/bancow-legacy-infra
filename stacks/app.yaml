@@ -193,6 +193,12 @@ Outputs:
     Export:
       Name: !Sub 'bancow-${Environment}-api-id'
   
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !Ref UserPoolArn
+    Export:
+      Name: !Sub 'bancow-${Environment}-user-pool-arn'
+  
   ServiceFunctionArn:
     Description: Lambda function ARN
     Value: !GetAtt ServiceFunction.Arn

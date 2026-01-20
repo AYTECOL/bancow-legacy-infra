@@ -32,6 +32,15 @@ Parameters:
     Type: String
     Description: S3 key for Lambda deployment package
 
+  # Async parameters
+  AsyncArtifactBucket:
+    Type: String
+    Description: S3 bucket containing async deployment artifacts
+  
+  AsyncArtifactKey:
+    Type: String
+    Description: S3 key for async deployment package
+
   LogLevel:
     Type: String
     Default: INFO
@@ -90,6 +99,33 @@ Resources:
           Value: !Ref Environment
         - Key: Stack
           Value: App
+  
+  # Async Stack - Step Functions orchestration
+  AsyncStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - SecurityStack
+      - DataStack
+      - AppStack
+    Properties:
+      TemplateURL: async.yaml
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !Ref VpcId
+        PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]
+        LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
+        LambdaExecutionRoleArn: !GetAtt SecurityStack.Outputs.LambdaExecutionRoleArn
+        SoapCredentialsArn: !GetAtt DataStack.Outputs.SoapCredentialsArn
+        AsyncArtifactBucket: !Ref AsyncArtifactBucket
+        AsyncArtifactKey: !Ref AsyncArtifactKey
+        LogLevel: !Ref LogLevel
+        ApiGatewayId: !GetAtt AppStack.Outputs.ApiId
+        UserPoolArn: !GetAtt AppStack.Outputs.UserPoolArn
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack
+          Value: Async
 
 Outputs:
   ApiUrl:
@@ -107,3 +143,20 @@ Outputs:
   CognitoTokenUrl:
     Description: Cognito Token URL
     Value: !GetAtt SecurityStack.Outputs.CognitoTokenUrl
+  
+  # Async Stack Outputs
+  V2StarterFunctionArn:
+    Description: ARN of the v2 Starter Lambda function
+    Value: !GetAtt AsyncStack.Outputs.StarterFunctionArn
+  
+  V2StarterFunctionName:
+    Description: Name of the v2 Starter Lambda function
+    Value: !GetAtt AsyncStack.Outputs.StarterFunctionName
+  
+  V2StateMachineArn:
+    Description: ARN of the v2 Process X State Machine
+    Value: !GetAtt AsyncStack.Outputs.StateMachineArn
+  
+  V2StateMachineName:
+    Description: Name of the v2 Process X State Machine
+    Value: !GetAtt AsyncStack.Outputs.StateMachineName
