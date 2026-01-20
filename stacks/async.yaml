@@ -66,12 +66,38 @@ Resources:
   StateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
+      LogGroupName: !Sub '/aws/stepfunctions/bancow-${Environment}-process-x'
       RetentionInDays: 30
       Tags:
         - Key: Name
           Value: !Sub 'bancow-${Environment}-process-x-logs'
         - Key: Environment
           Value: !Ref Environment
+
+  StateMachineLogPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub 'bancow-${Environment}-sf-log-policy'
+      PolicyDocument: !Sub >
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AllowStepFunctionsLogging",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams"
+              ],
+              "Resource": "${StateMachineLogGroup.Arn}:*"
+            }
+          ]
+        }
 
   # Lambda Function - Starter (initiates Step Functions)
   StarterFunction:
@@ -241,7 +267,9 @@ Resources:
   # Step Functions State Machine (Express for low latency)
   ProcessXStateMachine:
     Type: AWS::Serverless::StateMachine
-    DependsOn: StateMachineLogGroup
+    DependsOn:
+      - StateMachineLogGroup
+      - StateMachineLogPolicy
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-process-x'
       Type: EXPRESS
