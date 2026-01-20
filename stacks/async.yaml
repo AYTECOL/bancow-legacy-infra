@@ -227,7 +227,12 @@ Resources:
                   - "logs:PutResourcePolicy"
                   - "logs:DescribeResourcePolicies"
                   - "logs:DescribeLogGroups"
-                Resource: "*" # Requerido para la gestión de entrega de logs de Step Functions
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: !GetAtt StateMachineLogGroup.Arn
       Tags:
         - Key: Name
           Value: !Sub 'bancow-${Environment}-v2-statemachine-role'
