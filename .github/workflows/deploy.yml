@@ -49,12 +49,14 @@ jobs:
         run: |
           STACK_NAME="bancow-dev-infra"
           DEPLOY_BUCKET="bancow-dev-sam-deployment"
+          
+          sam build --template stacks/root.yaml
+          
           sam deploy \
           --stack-name $STACK_NAME \
           --s3-bucket $DEPLOY_BUCKET \
           --config-file samconfig.toml \
           --config-env dev \
-          --template-file stacks/root.yaml \
           --no-fail-on-empty-changeset \
           --on-failure ROLLBACK \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \

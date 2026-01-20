@@ -1,0 +1,203 @@
+{
+  "Comment": "BANCOW Workflows v2 - Generic Process Orchestration",
+  "StartAt": "ValidateInput",
+  "States": {
+    "ValidateInput": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ValidateInputFunctionArn}",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.validationResult",
+      "ResultSelector": {
+        "valid.$": "$.Payload.valid",
+        "data.$": "$.Payload.data",
+        "errors.$": "$.Payload.errors"
+      },
+      "Next": "CheckValidation",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ValidationFailed"
+        }
+      ]
+    },
+    "CheckValidation": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.validationResult.valid",
+          "BooleanEquals": true,
+          "Next": "InvokeSoap"
+        }
+      ],
+      "Default": "ValidationFailed"
+    },
+    "ValidationFailed": {
+      "Type": "Pass",
+      "Parameters": {
+        "statusCode": 400,
+        "body": {
+          "error": true,
+          "code": "VALIDATION_ERROR",
+          "message": "Input validation failed",
+          "errors.$": "$.validationResult.errors"
+        },
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Request-Id.$": "$.requestId"
+        }
+      },
+      "End": true
+    },
+    "InvokeSoap": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${InvokeSoapFunctionArn}",
+        "Payload": {
+          "requestId.$": "$.requestId",
+          "timestamp.$": "$.timestamp",
+          "path.$": "$.path",
+          "method.$": "$.method",
+          "data.$": "$.validationResult.data.data",
+          "headers.$": "$.headers"
+        }
+      },
+      "ResultPath": "$.soapResult",
+      "ResultSelector": {
+        "success.$": "$.Payload.success",
+        "data.$": "$.Payload.data",
+        "error.$": "$.Payload.error",
+        "metadata.$": "$.Payload.metadata"
+      },
+      "Next": "CheckSoapResult",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        },
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 3,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "SoapInvocationFailed"
+        }
+      ]
+    },
+    "CheckSoapResult": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.soapResult.success",
+          "BooleanEquals": true,
+          "Next": "TransformResponse"
+        }
+      ],
+      "Default": "SoapInvocationFailed"
+    },
+    "SoapInvocationFailed": {
+      "Type": "Pass",
+      "Parameters": {
+        "statusCode": 502,
+        "body": {
+          "error": true,
+          "code.$": "$.soapResult.error.code",
+          "message": "SOAP service invocation failed",
+          "details.$": "$.soapResult.error"
+        },
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Request-Id.$": "$.requestId"
+        }
+      },
+      "End": true
+    },
+    "TransformResponse": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${TransformResponseFunctionArn}",
+        "Payload": {
+          "requestId.$": "$.requestId",
+          "soapResponse.$": "$.soapResult",
+          "originalInput": {
+            "path.$": "$.path",
+            "method.$": "$.method",
+            "data.$": "$.validationResult.data.data"
+          }
+        }
+      },
+      "ResultSelector": {
+        "statusCode.$": "$.Payload.statusCode",
+        "body.$": "$.Payload.body",
+        "headers.$": "$.Payload.headers"
+      },
+      "OutputPath": "$",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "TransformationFailed"
+        }
+      ],
+      "End": true
+    },
+    "TransformationFailed": {
+      "Type": "Pass",
+      "Parameters": {
+        "statusCode": 500,
+        "body": {
+          "error": true,
+          "code": "TRANSFORMATION_ERROR",
+          "message": "Response transformation failed",
+          "details.$": "$.error"
+        },
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Request-Id.$": "$.requestId"
+        }
+      },
+      "End": true
+    }
+  }
+}

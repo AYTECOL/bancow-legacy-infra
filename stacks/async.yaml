@@ -225,7 +225,7 @@ Resources:
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-process-x'
       Type: EXPRESS
-      DefinitionUri: ../../workflows-v2/state-machines/process-x.asl.json
+      DefinitionUri: ../state-machines/process-x.asl.json
       DefinitionSubstitutions:
         ValidateInputFunctionArn: !GetAtt ValidateInputFunction.Arn
         InvokeSoapFunctionArn: !GetAtt InvokeSoapFunction.Arn
