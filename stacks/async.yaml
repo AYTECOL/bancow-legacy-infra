@@ -260,59 +260,60 @@ Resources:
       MemorySize: 256
       TracingConfig:
         Mode: Active
-      InlineCode: |
-        const { SFNClient, StartSyncExecutionCommand } = require('@aws-sdk/client-sfn');
-        const sfn = new SFNClient({});
-        
-        exports.handler = async (event) => {
-          console.log('Starter - Received event:', JSON.stringify(event));
+      Code:
+        ZipFile: |
+          const { SFNClient, StartSyncExecutionCommand } = require('@aws-sdk/client-sfn');
+          const sfn = new SFNClient({});
           
-          const stateMachineArn = process.env.STATE_MACHINE_ARN;
-          
-          try {
-            // Extract body from API Gateway event
-            let input = event;
-            if (event.body) {
-              input = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-            }
+          exports.handler = async (event) => {
+            console.log('Starter - Received event:', JSON.stringify(event));
             
-            // Add correlation ID
-            input.correlationId = event.requestContext?.requestId || Date.now().toString();
+            const stateMachineArn = process.env.STATE_MACHINE_ARN;
             
-            const command = new StartSyncExecutionCommand({
-              stateMachineArn: stateMachineArn,
-              name: `exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              input: JSON.stringify(input)
-            });
-            
-            const response = await sfn.send(command);
-            
-            console.log('Starter - Execution status:', response.status);
-            
-            if (response.status === 'SUCCEEDED') {
-              const output = JSON.parse(response.output);
-              return output;
-            } else {
-              console.error('Starter - Execution failed:', response.error, response.cause);
+            try {
+              // Extract body from API Gateway event
+              let input = event;
+              if (event.body) {
+                input = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+              }
+              
+              // Add correlation ID
+              input.correlationId = event.requestContext?.requestId || Date.now().toString();
+              
+              const command = new StartSyncExecutionCommand({
+                stateMachineArn: stateMachineArn,
+                name: `exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                input: JSON.stringify(input)
+              });
+              
+              const response = await sfn.send(command);
+              
+              console.log('Starter - Execution status:', response.status);
+              
+              if (response.status === 'SUCCEEDED') {
+                const output = JSON.parse(response.output);
+                return output;
+              } else {
+                console.error('Starter - Execution failed:', response.error, response.cause);
+                return {
+                  statusCode: 500,
+                  body: JSON.stringify({ 
+                    error: 'Step Functions execution failed',
+                    details: response.error 
+                  })
+                };
+              }
+            } catch (error) {
+              console.error('Starter - Error:', error);
               return {
                 statusCode: 500,
                 body: JSON.stringify({ 
-                  error: 'Step Functions execution failed',
-                  details: response.error 
+                  error: 'Internal server error',
+                  details: error.message 
                 })
               };
             }
-          } catch (error) {
-            console.error('Starter - Error:', error);
-            return {
-              statusCode: 500,
-              body: JSON.stringify({ 
-                error: 'Internal server error',
-                details: error.message 
-              })
-            };
-          }
-        };
+          };
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Ref PersonNaturalStateMachine
