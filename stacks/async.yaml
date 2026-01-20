@@ -270,6 +270,7 @@ Resources:
     DependsOn:
       - StateMachineLogGroup
       - StateMachineLogPolicy
+      - StateMachineRole
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-process-x'
       Type: EXPRESS
@@ -286,7 +287,7 @@ Resources:
         IncludeExecutionData: true
         Destinations:
           - CloudWatchLogsLogGroup:
-              LogGroupArn: !Sub "${StateMachineLogGroup.Arn}:*"
+              LogGroupArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/stepfunctions/bancow-${Environment}-process-x:*"
       Tags:
         Name: !Sub 'bancow-${Environment}-v2-process-x'
         Environment: !Ref Environment
