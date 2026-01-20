@@ -59,12 +59,12 @@ Mappings:
 
 Resources:
   # CloudWatch Log Group for Step Functions
-  StateMachineLogGroup:
+  SfnLogGroupFinal:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
-      LogGroupName: !Sub 'bancow-${Environment}-v2-sfn-logs'
+      LogGroupName: !Sub 'bancow-${Environment}-v2-sfn-clean-logs'
       RetentionInDays: 14
 #      Tags:
 #        - Key: Name
@@ -217,7 +217,7 @@ Resources:
   # Step Functions State Machine - Person Natural
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine
-    DependsOn: StateMachineLogGroup
+    DependsOn: SfnLogGroupFinal
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-person-natural'
       Type: EXPRESS
@@ -227,12 +227,10 @@ Resources:
         GetPersonFn: !GetAtt GetPersonFunction.Arn
         GetAddressesFn: !GetAtt GetAddressesFunction.Arn
         NormalizeFn: !GetAtt NormalizeFunction.Arn
-#      Logging:
-#        Destinations:
-#          - CloudWatchLogsLogGroup:
-#              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
-#        IncludeExecutionData: true
-#        Level: ALL
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !Sub '${SfnLogGroupFinal.Arn}:*'
       Tracing:
         Enabled: true
       Policies:
