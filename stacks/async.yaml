@@ -1,19 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  BANCOW Infrastructure - Async Stack
-  Step Functions orchestration with Lambda tasks for asynchronous processing and workflow management
+  BANCOW v2 - Async Stack
+  Step Functions State Machine and Lambda task functions for v2 orchestration
+  NO API GATEWAY - API is defined in app.yaml
 
 Parameters:
   Environment:
     Type: String
     Description: Environment name
-    AllowedValues: [ dev, uat, prod ]
+    AllowedValues: [dev, uat, prod]
   
-  # Network parameters (passed from root)
   VpcId:
     Type: String
-    Description: VPC ID for Lambda
+    Description: VPC ID for Lambda functions
   
   PrivateSubnetIds:
     Type: CommaDelimitedList
@@ -21,32 +21,28 @@ Parameters:
   
   LambdaSecurityGroupId:
     Type: String
-    Description: Security Group ID for Lambda
+    Description: Security Group ID for Lambda functions
   
-  # Security parameters (passed from root)
   LambdaExecutionRoleArn:
     Type: String
-    Description: ARN of Lambda execution role
+    Description: ARN of Lambda execution role (from security stack)
   
-  # Data parameters (passed from root)
   SoapCredentialsArn:
     Type: String
     Description: ARN of Secrets Manager secret for SOAP credentials
   
-  # Artifact parameters (passed from root)
-  AsyncArtifactBucket:
+  V2ArtifactBucket:
     Type: String
-    Description: S3 bucket containing async deployment artifacts
+    Description: S3 bucket containing v2 Lambda deployment artifacts
   
-  AsyncArtifactKey:
+  V2ArtifactKey:
     Type: String
-    Description: S3 key for async deployment package
+    Description: S3 key for v2 Lambda deployment package (e.g., v2/dev/latest/bancow-v2-lambda.zip)
   
-  # Application configuration
   LogLevel:
     Type: String
     Default: INFO
-    AllowedValues: [ DEBUG, INFO, WARN, ERROR ]
+    AllowedValues: [DEBUG, INFO, WARN, ERROR]
     Description: Application log level
 
 Mappings:
@@ -66,254 +62,340 @@ Resources:
   StateMachineLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/stepfunctions/bancow-${Environment}-process-x'
-      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/states/bancow-${Environment}-v2-person-natural'
+      RetentionInDays: 14
       Tags:
         - Key: Name
-          Value: !Sub 'bancow-${Environment}-process-x-logs'
+          Value: !Sub 'bancow-${Environment}-v2-sfn-logs'
+        - Key: Environment
+          Value: !Ref Environment
 
-  StateMachineLogPolicy:
-    Type: AWS::Logs::ResourcePolicy
+  # Lambda Function - Validate
+  ValidateFunction:
+    Type: AWS::Lambda::Function
     Properties:
-      PolicyName: !Sub 'bancow-${Environment}-sf-log-policy'
-      PolicyDocument: !Sub
-        - |
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "AllowStepFunctionsLogging",
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "states.amazonaws.com"
-                },
-                "Action": [
-                  "logs:CreateLogStream",
-                  "logs:PutLogEvents",
-                  "logs:DescribeLogGroups",
-                  "logs:DescribeLogStreams"
-                ],
-                "Resource": "${LogGroupArn}:*"
-              }
-            ]
-          }
-        - LogGroupArn: !GetAtt StateMachineLogGroup.Arn
-
-  # Lambda Function - Starter (initiates Step Functions)
-  StarterFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub 'bancow-${Environment}-v2-starter'
-      Description: !Sub 'BANCOW v2 Starter - Initiates Step Functions execution (${Environment})'
+      FunctionName: !Sub 'bancow-${Environment}-v2-validate'
+      Description: !Sub 'BANCOW v2 Validate Handler (${Environment})'
       Runtime: nodejs22.x
-      Handler: starter/index.handler
-      CodeUri:
-        Bucket: !Ref AsyncArtifactBucket
-        Key: !Ref AsyncArtifactKey
-      MemorySize: 256
-      Timeout: 30
+      Handler: index.handler
+      Code:
+        S3Bucket: !Ref V2ArtifactBucket
+        S3Key: !Ref V2ArtifactKey
       Role: !Ref LambdaExecutionRoleArn
-      Environment:
-        Variables:
-          LOG_LEVEL: !Ref LogLevel
-          ENVIRONMENT: !Ref Environment
-          STATE_MACHINE_ARN: !Ref ProcessXStateMachine
-      Tracing: Active
-      Tags:
-        Name: !Sub 'bancow-${Environment}-v2-starter'
-        Environment: !Ref Environment
-        Version: 'v2'
-
-  # Lambda Function - Validate Input Task
-  ValidateInputFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub 'bancow-${Environment}-v2-validate-input'
-      Description: !Sub 'BANCOW v2 - Validate Input Task (${Environment})'
-      Runtime: nodejs22.x
-      Handler: tasks/validate-input/index.handler
-      CodeUri:
-        Bucket: !Ref AsyncArtifactBucket
-        Key: !Ref AsyncArtifactKey
-      MemorySize: 256
       Timeout: 10
-      Role: !Ref LambdaExecutionRoleArn
-      Environment:
-        Variables:
-          LOG_LEVEL: !Ref LogLevel
-          ENVIRONMENT: !Ref Environment
-      Tracing: Active
-      Tags:
-        Name: !Sub 'bancow-${Environment}-v2-validate-input'
-        Environment: !Ref Environment
-        Version: 'v2'
-
-  # Lambda Function - Invoke SOAP Task
-  InvokeSoapFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub 'bancow-${Environment}-v2-invoke-soap'
-      Description: !Sub 'BANCOW v2 - Invoke SOAP Task (${Environment})'
-      Runtime: nodejs22.x
-      Handler: tasks/invoke-soap-a/index.handler
-      CodeUri:
-        Bucket: !Ref AsyncArtifactBucket
-        Key: !Ref AsyncArtifactKey
       MemorySize: 512
-      Timeout: 60
-      Role: !Ref LambdaExecutionRoleArn
+      TracingConfig:
+        Mode: Active
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroupId
         SubnetIds: !Ref PrivateSubnetIds
       Environment:
         Variables:
-          LOG_LEVEL: !Ref LogLevel
+          HANDLER_MODE: validate
           ENVIRONMENT: !Ref Environment
-          SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
-          SOAP_CREDENTIALS_ARN: !Ref SoapCredentialsArn
-          ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
-      Tracing: Active
-      Tags:
-        Name: !Sub 'bancow-${Environment}-v2-invoke-soap'
-        Environment: !Ref Environment
-        Version: 'v2'
-
-  # Lambda Function - Transform Response Task
-  TransformResponseFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub 'bancow-${Environment}-v2-transform-response'
-      Description: !Sub 'BANCOW v2 - Transform Response Task (${Environment})'
-      Runtime: nodejs22.x
-      Handler: tasks/transform-response/index.handler
-      CodeUri:
-        Bucket: !Ref AsyncArtifactBucket
-        Key: !Ref AsyncArtifactKey
-      MemorySize: 256
-      Timeout: 10
-      Role: !Ref LambdaExecutionRoleArn
-      Environment:
-        Variables:
           LOG_LEVEL: !Ref LogLevel
-          ENVIRONMENT: !Ref Environment
-      Tracing: Active
-      Tags:
-        Name: !Sub 'bancow-${Environment}-v2-transform-response'
-        Environment: !Ref Environment
-        Version: 'v2'
-
-  # IAM Role for Step Functions
-  StateMachineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub 'bancow-${Environment}-v2-statemachine-role'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: states.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess'
-      Policies:
-        - PolicyName: InvokeLambdaFunctions
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'lambda:InvokeFunction'
-                Resource:
-                  - !GetAtt ValidateInputFunction.Arn
-                  - !GetAtt InvokeSoapFunction.Arn
-                  - !GetAtt TransformResponseFunction.Arn
-        - PolicyName: XRayAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'xray:PutTraceSegments'
-                  - 'xray:PutTelemetryRecords'
-                Resource: '*'
-        - PolicyName: CloudWatchLogsDelivery
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "logs:CreateLogDelivery"
-                  - "logs:GetLogDelivery"
-                  - "logs:UpdateLogDelivery"
-                  - "logs:DeleteLogDelivery"
-                  - "logs:ListLogDeliveries"
-                  - "logs:PutResourcePolicy"
-                  - "logs:DescribeResourcePolicies"
-                  - "logs:DescribeLogGroups"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                Resource: !GetAtt StateMachineLogGroup.Arn
+          NODE_OPTIONS: '--enable-source-maps'
       Tags:
         - Key: Name
-          Value: !Sub 'bancow-${Environment}-v2-statemachine-role'
+          Value: !Sub 'bancow-${Environment}-v2-validate'
         - Key: Environment
           Value: !Ref Environment
+        - Key: Version
+          Value: 'v2'
 
-  # Step Functions State Machine (Express for low latency)
-  ProcessXStateMachine:
-    Type: AWS::Serverless::StateMachine
-    DependsOn:
-      - StateMachineLogGroup
-      - StateMachineLogPolicy
-      - StateMachineRole
+  # Lambda Function - Get Person
+  GetPersonFunction:
+    Type: AWS::Lambda::Function
     Properties:
-      Name: !Sub 'bancow-${Environment}-v2-process-x'
+      FunctionName: !Sub 'bancow-${Environment}-v2-person'
+      Description: !Sub 'BANCOW v2 Person Handler (${Environment})'
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Code:
+        S3Bucket: !Ref V2ArtifactBucket
+        S3Key: !Ref V2ArtifactKey
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 20
+      MemorySize: 1024
+      TracingConfig:
+        Mode: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          HANDLER_MODE: person
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: !Ref LogLevel
+          SOAP_ENDPOINT: !FindInMap [SoapConfig, !Ref Environment, SOAPENDPOINT]
+          ALLOW_INSECURE_TLS: !FindInMap [SoapConfig, !Ref Environment, ALLOWINSECURETLS]
+          SECRETS_ARN: !Ref SoapCredentialsArn
+          NODE_OPTIONS: '--enable-source-maps'
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-v2-person'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Version
+          Value: 'v2'
+
+  # Lambda Function - Get Addresses
+  GetAddressesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-v2-addresses'
+      Description: !Sub 'BANCOW v2 Addresses Handler (${Environment})'
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Code:
+        S3Bucket: !Ref V2ArtifactBucket
+        S3Key: !Ref V2ArtifactKey
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 20
+      MemorySize: 1024
+      TracingConfig:
+        Mode: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          HANDLER_MODE: addresses
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: !Ref LogLevel
+          SOAP_ENDPOINT: !FindInMap [SoapConfig, !Ref Environment, SOAPENDPOINT]
+          ALLOW_INSECURE_TLS: !FindInMap [SoapConfig, !Ref Environment, ALLOWINSECURETLS]
+          SECRETS_ARN: !Ref SoapCredentialsArn
+          NODE_OPTIONS: '--enable-source-maps'
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-v2-addresses'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Version
+          Value: 'v2'
+
+  # Lambda Function - Normalize
+  NormalizeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-v2-normalize'
+      Description: !Sub 'BANCOW v2 Normalize Handler (${Environment})'
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Code:
+        S3Bucket: !Ref V2ArtifactBucket
+        S3Key: !Ref V2ArtifactKey
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 10
+      MemorySize: 512
+      TracingConfig:
+        Mode: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          HANDLER_MODE: normalize
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: !Ref LogLevel
+          NODE_OPTIONS: '--enable-source-maps'
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-v2-normalize'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Version
+          Value: 'v2'
+
+  # Step Functions State Machine - Person Natural
+  PersonNaturalStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub 'bancow-${Environment}-v2-person-natural'
       Type: EXPRESS
-      DefinitionUri: ../state-machines/process-x.asl.json
+      DefinitionUri: ../state-machines/person-natural.asl.json
       DefinitionSubstitutions:
-        ValidateInputFunctionArn: !GetAtt ValidateInputFunction.Arn
-        InvokeSoapFunctionArn: !GetAtt InvokeSoapFunction.Arn
-        TransformResponseFunctionArn: !GetAtt TransformResponseFunction.Arn
-      Role: !GetAtt StateMachineRole.Arn
-      Tracing:
-        Enabled: true
+        ValidateFn: !GetAtt ValidateFunction.Arn
+        GetPersonFn: !GetAtt GetPersonFunction.Arn
+        GetAddressesFn: !GetAddressesFunction.Arn
+        NormalizeFn: !GetAtt NormalizeFunction.Arn
       Logging:
-        Level: ALL
-        IncludeExecutionData: true
         Destinations:
           - CloudWatchLogsLogGroup:
-              LogGroupArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/stepfunctions/bancow-${Environment}-process-x:*"
+              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
+        IncludeExecutionData: true
+        Level: ALL
+      Tracing:
+        Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ValidateFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetPersonFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GetAddressesFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref NormalizeFunction
+        - CloudWatchLogsFullAccess
       Tags:
-        Name: !Sub 'bancow-${Environment}-v2-process-x'
+        Name: !Sub 'bancow-${Environment}-v2-person-natural'
         Environment: !Ref Environment
         Version: 'v2'
 
+  # Lambda Function - Starter (invokes Step Functions from API Gateway)
+  StarterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-v2-starter'
+      Description: !Sub 'BANCOW v2 Step Functions Starter (${Environment})'
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 30
+      MemorySize: 256
+      TracingConfig:
+        Mode: Active
+      InlineCode: |
+        const { SFNClient, StartSyncExecutionCommand } = require('@aws-sdk/client-sfn');
+        const sfn = new SFNClient({});
+        
+        exports.handler = async (event) => {
+          console.log('Starter - Received event:', JSON.stringify(event));
+          
+          const stateMachineArn = process.env.STATE_MACHINE_ARN;
+          
+          try {
+            // Extract body from API Gateway event
+            let input = event;
+            if (event.body) {
+              input = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+            }
+            
+            // Add correlation ID
+            input.correlationId = event.requestContext?.requestId || Date.now().toString();
+            
+            const command = new StartSyncExecutionCommand({
+              stateMachineArn: stateMachineArn,
+              name: `exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              input: JSON.stringify(input)
+            });
+            
+            const response = await sfn.send(command);
+            
+            console.log('Starter - Execution status:', response.status);
+            
+            if (response.status === 'SUCCEEDED') {
+              const output = JSON.parse(response.output);
+              return output;
+            } else {
+              console.error('Starter - Execution failed:', response.error, response.cause);
+              return {
+                statusCode: 500,
+                body: JSON.stringify({ 
+                  error: 'Step Functions execution failed',
+                  details: response.error 
+                })
+              };
+            }
+          } catch (error) {
+            console.error('Starter - Error:', error);
+            return {
+              statusCode: 500,
+              body: JSON.stringify({ 
+                error: 'Internal server error',
+                details: error.message 
+              })
+            };
+          }
+        };
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref PersonNaturalStateMachine
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: !Ref LogLevel
+      Tags:
+        - Key: Name
+          Value: !Sub 'bancow-${Environment}-v2-starter'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Version
+          Value: 'v2'
+
+  # Permission for Step Functions to invoke Lambda functions
+  ValidateFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ValidateFunction
+      Action: lambda:InvokeFunction
+      Principal: states.amazonaws.com
+      SourceArn: !Ref PersonNaturalStateMachine
+
+  GetPersonFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetPersonFunction
+      Action: lambda:InvokeFunction
+      Principal: states.amazonaws.com
+      SourceArn: !Ref PersonNaturalStateMachine
+
+  GetAddressesFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetAddressesFunction
+      Action: lambda:InvokeFunction
+      Principal: states.amazonaws.com
+      SourceArn: !Ref PersonNaturalStateMachine
+
+  NormalizeFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NormalizeFunction
+      Action: lambda:InvokeFunction
+      Principal: states.amazonaws.com
+      SourceArn: !Ref PersonNaturalStateMachine
+
 Outputs:
+  StateMachineArn:
+    Description: ARN of the Person Natural State Machine
+    Value: !Ref PersonNaturalStateMachine
+    Export:
+      Name: !Sub '${AWS::StackName}-StateMachineArn'
+
+  StateMachineName:
+    Description: Name of the Person Natural State Machine
+    Value: !GetAtt PersonNaturalStateMachine.Name
+    Export:
+      Name: !Sub '${AWS::StackName}-StateMachineName'
+
   StarterFunctionArn:
     Description: ARN of the Starter Lambda function
     Value: !GetAtt StarterFunction.Arn
     Export:
       Name: !Sub '${AWS::StackName}-StarterFunctionArn'
-  
+
   StarterFunctionName:
     Description: Name of the Starter Lambda function
     Value: !Ref StarterFunction
     Export:
       Name: !Sub '${AWS::StackName}-StarterFunctionName'
-  
-  StateMachineArn:
-    Description: ARN of the Process X State Machine
-    Value: !Ref ProcessXStateMachine
-    Export:
-      Name: !Sub '${AWS::StackName}-StateMachineArn'
-  
-  StateMachineName:
-    Description: Name of the Process X State Machine
-    Value: !GetAtt ProcessXStateMachine.Name
-    Export:
-      Name: !Sub '${AWS::StackName}-StateMachineName'
+
+  ValidateFunctionArn:
+    Description: ARN of the Validate Lambda function
+    Value: !GetAtt ValidateFunction.Arn
+
+  GetPersonFunctionArn:
+    Description: ARN of the Person Lambda function
+    Value: !GetAtt GetPersonFunction.Arn
+
+  GetAddressesFunctionArn:
+    Description: ARN of the Addresses Lambda function
+    Value: !GetAtt GetAddressesFunction.Arn
+
+  NormalizeFunctionArn:
+    Description: ARN of the Normalize Lambda function
+    Value: !GetAtt NormalizeFunction.Arn

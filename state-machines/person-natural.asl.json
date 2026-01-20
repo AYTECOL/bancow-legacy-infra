@@ -1,0 +1,165 @@
+{
+  "Comment": "v2 - Orquestación persona natural (persona física + domicilios)",
+  "StartAt": "ValidarInput",
+  "States": {
+    "ValidarInput": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ValidateFn}",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$",
+      "Next": "ParaleloPersonaYDomicilios",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ValidationFailed"
+        }
+      ]
+    },
+    "ParaleloPersonaYDomicilios": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "GetPersona",
+          "States": {
+            "GetPersona": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${GetPersonFn}",
+                "Payload.$": "$"
+              },
+              "ResultPath": "$.persona",
+              "End": true,
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "States.Timeout",
+                    "Lambda.TooManyRequestsException"
+                  ],
+                  "IntervalSeconds": 1,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "TimeoutSeconds": 15
+            }
+          }
+        },
+        {
+          "StartAt": "GetDomicilios",
+          "States": {
+            "GetDomicilios": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${GetAddressesFn}",
+                "Payload.$": "$"
+              },
+              "ResultPath": "$.domicilios",
+              "End": true,
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "States.Timeout",
+                    "Lambda.TooManyRequestsException"
+                  ],
+                  "IntervalSeconds": 1,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "TimeoutSeconds": 15
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.enriquecido",
+      "Next": "Normalizar",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ProcessingFailed"
+        }
+      ]
+    },
+    "Normalizar": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${NormalizeFn}",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$",
+      "End": true,
+      "TimeoutSeconds": 10,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NormalizationFailed"
+        }
+      ]
+    },
+    "ValidationFailed": {
+      "Type": "Pass",
+      "Result": {
+        "statusCode": 400,
+        "body": {
+          "error": "Validation failed",
+          "details": "Input validation error"
+        }
+      },
+      "End": true
+    },
+    "ProcessingFailed": {
+      "Type": "Pass",
+      "Result": {
+        "statusCode": 500,
+        "body": {
+          "error": "Processing failed",
+          "details": "Error fetching person or address data"
+        }
+      },
+      "End": true
+    },
+    "NormalizationFailed": {
+      "Type": "Pass",
+      "Result": {
+        "statusCode": 500,
+        "body": {
+          "error": "Normalization failed",
+          "details": "Error combining results"
+        }
+      },
+      "End": true
+    }
+  }
+}
