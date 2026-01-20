@@ -101,7 +101,6 @@ Resources:
   # App Stack - Lambda, API Gateway (v1 + v2 routes)
   AppStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: AsyncStack
     Properties:
       TemplateURL: app.yaml
       Parameters:

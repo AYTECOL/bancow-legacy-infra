@@ -213,6 +213,21 @@ Resources:
                   - 'xray:PutTraceSegments'
                   - 'xray:PutTelemetryRecords'
                 Resource: '*'
+        - PolicyName: CloudWatchLogsDelivery
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogDelivery"
+                  - "logs:GetLogDelivery"
+                  - "logs:UpdateLogDelivery"
+                  - "logs:DeleteLogDelivery"
+                  - "logs:ListLogDeliveries"
+                  - "logs:PutResourcePolicy"
+                  - "logs:DescribeResourcePolicies"
+                  - "logs:DescribeLogGroups"
+                Resource: "*" # Requerido para la gestión de entrega de logs de Step Functions
       Tags:
         - Key: Name
           Value: !Sub 'bancow-${Environment}-v2-statemachine-role'
@@ -222,6 +237,7 @@ Resources:
   # Step Functions State Machine (Express for low latency)
   ProcessXStateMachine:
     Type: AWS::Serverless::StateMachine
+    DependsOn: StateMachineLogGroup
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-process-x'
       Type: EXPRESS

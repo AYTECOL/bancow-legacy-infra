@@ -50,7 +50,7 @@ jobs:
           STACK_NAME="bancow-dev-infra"
           DEPLOY_BUCKET="bancow-dev-sam-deployment"
           
-          sam build --template stacks/root.yaml
+          sam build --template-file stacks/root.yaml
           
           sam deploy \
           --stack-name $STACK_NAME \
