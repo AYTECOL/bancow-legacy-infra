@@ -55,6 +55,7 @@ Resources:
   SecurityStack:
     Type: AWS::CloudFormation::Stack
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TemplateURL: security.yaml
       Parameters:

@@ -15,6 +15,7 @@ Resources:
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       RoleName: !Sub 'bancow-${Environment}-lambda-execution-role'
       AssumeRolePolicyDocument:
@@ -93,6 +94,7 @@ Resources:
   UserPool:
     Type: AWS::Cognito::UserPool
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       UserPoolName: !Sub 'bancow-${Environment}-user-pool'
       AutoVerifiedAttributes:
@@ -151,6 +153,7 @@ Resources:
   WebACL:
     Type: AWS::WAFv2::WebACL
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Name: !Sub 'bancow-${Environment}-webacl'
       Scope: REGIONAL
