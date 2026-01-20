@@ -222,7 +222,7 @@ Resources:
       DefinitionSubstitutions:
         ValidateFn: !GetAtt ValidateFunction.Arn
         GetPersonFn: !GetAtt GetPersonFunction.Arn
-        GetAddressesFn: !GetAddressesFunction.Arn
+        GetAddressesFn: !GetAtt GetAddressesFunction.Arn
         NormalizeFn: !GetAtt NormalizeFunction.Arn
       Logging:
         Destinations:
