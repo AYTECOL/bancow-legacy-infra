@@ -103,10 +103,6 @@ Resources:
   # Async Stack - Step Functions orchestration
   AsyncStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
-      - SecurityStack
-      - DataStack
-      - AppStack
     Properties:
       TemplateURL: async.yaml
       Parameters:
