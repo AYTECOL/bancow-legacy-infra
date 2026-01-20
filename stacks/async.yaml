@@ -286,7 +286,7 @@ Resources:
         IncludeExecutionData: true
         Destinations:
           - CloudWatchLogsLogGroup:
-              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
+              LogGroupArn: !Sub "${StateMachineLogGroup.Arn}:*"
       Tags:
         Name: !Sub 'bancow-${Environment}-v2-process-x'
         Environment: !Ref Environment
