@@ -14,6 +14,7 @@ Resources:
   # IAM Role for Lambda Execution
   LambdaExecutionRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Retain
     Properties:
       RoleName: !Sub 'bancow-${Environment}-lambda-execution-role'
       AssumeRolePolicyDocument:
@@ -91,6 +92,7 @@ Resources:
   # Cognito User Pool
   UserPool:
     Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
     Properties:
       UserPoolName: !Sub 'bancow-${Environment}-user-pool'
       AutoVerifiedAttributes:
@@ -148,6 +150,7 @@ Resources:
   # WAF Web ACL
   WebACL:
     Type: AWS::WAFv2::WebACL
+    DeletionPolicy: Retain
     Properties:
       Name: !Sub 'bancow-${Environment}-webacl'
       Scope: REGIONAL
@@ -193,40 +196,40 @@ Outputs:
     Description: ARN of Lambda Execution Role
     Value: !GetAtt LambdaExecutionRole.Arn
     Export:
-      Name: !Sub 'bancow-${Environment}-lambda-role-arn'
+      Name: !Sub 'bancow-${Environment}-lambda-role-arn-v2'
 
   UserPoolArn:
     Description: ARN of Cognito User Pool
     Value: !GetAtt UserPool.Arn
     Export:
-      Name: !Sub 'bancow-${Environment}-user-pool-arn'
+      Name: !Sub 'bancow-${Environment}-user-pool-arn-v2'
 
   UserPoolId:
     Description: ID of Cognito User Pool
     Value: !Ref UserPool
     Export:
-      Name: !Sub 'bancow-${Environment}-user-pool-id'
+      Name: !Sub 'bancow-${Environment}-user-pool-id-v2'
 
   UserPoolClientId:
     Description: ID of Cognito User Pool Client
     Value: !Ref UserPoolClient
     Export:
-      Name: !Sub 'bancow-${Environment}-user-pool-client-id'
+      Name: !Sub 'bancow-${Environment}-user-pool-client-id-v2'
 
   CognitoAuthDomain:
     Description: Cognito Authentication Domain URL
     Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
     Export:
-      Name: !Sub 'bancow-${Environment}-cognito-auth-domain'
+      Name: !Sub 'bancow-${Environment}-cognito-auth-domain-v2'
 
   CognitoTokenUrl:
     Description: Cognito Token Endpoint URL
     Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
     Export:
-      Name: !Sub 'bancow-${Environment}-cognito-token-url'
+      Name: !Sub 'bancow-${Environment}-cognito-token-url-v2'
 
   WebACLArn:
     Description: ARN of WAF Web ACL
     Value: !GetAtt WebACL.Arn
     Export:
-      Name: !Sub 'bancow-${Environment}-webacl-arn'
+      Name: !Sub 'bancow-${Environment}-webacl-arn-v2'

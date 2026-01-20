@@ -54,6 +54,7 @@ Resources:
   # Security Stack - IAM Roles, Cognito, WAF
   SecurityStack:
     Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Retain
     Properties:
       TemplateURL: security.yaml
       Parameters:
@@ -143,15 +144,15 @@ Outputs:
   V2StarterFunctionArn:
     Description: ARN of the v2 Starter Lambda function
     Value: !GetAtt AsyncStack.Outputs.StarterFunctionArn
-  
+
   V2StarterFunctionName:
     Description: Name of the v2 Starter Lambda function
     Value: !GetAtt AsyncStack.Outputs.StarterFunctionName
-  
+
   V2StateMachineArn:
     Description: ARN of the v2 Process X State Machine
     Value: !GetAtt AsyncStack.Outputs.StateMachineArn
-  
+
   V2StateMachineName:
     Description: Name of the v2 Process X State Machine
     Value: !GetAtt AsyncStack.Outputs.StateMachineName
