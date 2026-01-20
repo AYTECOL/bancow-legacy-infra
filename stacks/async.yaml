@@ -64,6 +64,7 @@ Resources:
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
+      LogGroupName: !Sub 'bancow-${Environment}-v2-sfn-logs'
       RetentionInDays: 14
       Tags:
         - Key: Name
