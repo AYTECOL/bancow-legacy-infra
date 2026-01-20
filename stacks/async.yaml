@@ -215,6 +215,7 @@ Resources:
   # Step Functions State Machine - Person Natural
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine
+    DependsOn: StateMachineLogGroup
     Properties:
       Name: !Sub 'bancow-${Environment}-v2-person-natural'
       Type: EXPRESS
