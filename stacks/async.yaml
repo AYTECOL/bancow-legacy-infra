@@ -28,15 +28,6 @@ Parameters:
     Type: String
     Description: ARN of Lambda execution role
   
-  UserPoolArn:
-    Type: String
-    Description: ARN of Cognito User Pool for API Gateway authorization
-  
-  # API Gateway parameters (passed from root)
-  ApiGatewayId:
-    Type: String
-    Description: API Gateway REST API ID for async routes
-  
   # Data parameters (passed from root)
   SoapCredentialsArn:
     Type: String
@@ -103,37 +94,6 @@ Resources:
           ENVIRONMENT: !Ref Environment
           STATE_MACHINE_ARN: !Ref ProcessXStateMachine
       Tracing: Active
-      Events:
-        V2GetPhysicalPerson:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGatewayId
-            Path: /v2/person/physical
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-        V2GetAddresses:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGatewayId
-            Path: /v2/person/addresses
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-        V2GetNaturalPerson:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGatewayId
-            Path: /v2/person/natural
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
       Tags:
         Name: !Sub 'bancow-${Environment}-v2-starter'
         Environment: !Ref Environment

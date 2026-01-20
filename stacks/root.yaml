@@ -77,30 +77,7 @@ Resources:
         - Key: Stack
           Value: Data
   
-  # App Stack - Lambda, API Gateway
-  AppStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: app.yaml
-      Parameters:
-        Environment: !Ref Environment
-        VpcId: !Ref VpcId
-        PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]
-        LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
-        LambdaExecutionRoleArn: !GetAtt SecurityStack.Outputs.LambdaExecutionRoleArn
-        SoapCredentialsArn: !GetAtt DataStack.Outputs.SoapCredentialsArn
-        UserPoolArn: !GetAtt SecurityStack.Outputs.UserPoolArn
-        WebACLArn: !GetAtt SecurityStack.Outputs.WebACLArn
-        LambdaArtifactBucket: !Ref LambdaArtifactBucket
-        LambdaArtifactKey: !Ref LambdaArtifactKey
-        LogLevel: !Ref LogLevel
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Stack
-          Value: App
-  
-  # Async Stack - Step Functions orchestration
+  # Async Stack - Step Functions orchestration (deployed first to make StarterFunction available)
   AsyncStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -115,14 +92,37 @@ Resources:
         AsyncArtifactBucket: !Ref AsyncArtifactBucket
         AsyncArtifactKey: !Ref AsyncArtifactKey
         LogLevel: !Ref LogLevel
-        ApiGatewayId: !GetAtt AppStack.Outputs.ApiId
-        UserPoolArn: !GetAtt AppStack.Outputs.UserPoolArn
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Stack
           Value: Async
-
+  
+  # App Stack - Lambda, API Gateway (v1 + v2 routes)
+  AppStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: AsyncStack
+    Properties:
+      TemplateURL: app.yaml
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !Ref VpcId
+        PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]
+        LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
+        LambdaExecutionRoleArn: !GetAtt SecurityStack.Outputs.LambdaExecutionRoleArn
+        SoapCredentialsArn: !GetAtt DataStack.Outputs.SoapCredentialsArn
+        UserPoolArn: !GetAtt SecurityStack.Outputs.UserPoolArn
+        WebACLArn: !GetAtt SecurityStack.Outputs.WebACLArn
+        LambdaArtifactBucket: !Ref LambdaArtifactBucket
+        LambdaArtifactKey: !Ref LambdaArtifactKey
+        V2StarterFunctionArn: !GetAtt AsyncStack.Outputs.StarterFunctionArn
+        LogLevel: !Ref LogLevel
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack
+          Value: App
+  
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL

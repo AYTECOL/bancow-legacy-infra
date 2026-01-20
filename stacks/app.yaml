@@ -50,6 +50,11 @@ Parameters:
   LambdaArtifactKey:
     Type: String
     Description: S3 key for Lambda deployment package
+  
+  # V2 Step Functions integration
+  V2StarterFunctionArn:
+    Type: String
+    Description: ARN of the v2 Starter Lambda function from Async stack
 
   # Application configuration
   LogLevel:
@@ -93,7 +98,101 @@ Resources:
         Name: !Sub 'bancow-${Environment}-api'
         Environment: !Ref Environment
 
-  # Lambda Function - Service Function
+  # Lambda Function - V2 Proxy Function
+  # This function acts as a proxy between API Gateway and the v2 StarterFunction in the Async stack
+  V2ProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-v2-api-proxy'
+      Description: !Sub 'BANCOW v2 API Proxy - Routes requests to Step Functions (${Environment})'
+      Runtime: nodejs22.x
+      Handler: index.handler
+      InlineCode: |
+        const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+        const lambda = new LambdaClient({});
+        
+        exports.handler = async (event) => {
+          console.log('V2 API Proxy - Received event:', JSON.stringify(event));
+          
+          const starterFunctionArn = process.env.STARTER_FUNCTION_ARN;
+          
+          try {
+            const command = new InvokeCommand({
+              FunctionName: starterFunctionArn,
+              InvocationType: 'RequestResponse',
+              Payload: JSON.stringify(event)
+            });
+            
+            const response = await lambda.send(command);
+            const payload = JSON.parse(new TextDecoder().decode(response.Payload));
+            
+            console.log('V2 API Proxy - StarterFunction response:', JSON.stringify(payload));
+            
+            return payload;
+          } catch (error) {
+            console.error('V2 API Proxy - Error invoking StarterFunction:', error);
+            return {
+              statusCode: 500,
+              body: JSON.stringify({ 
+                message: 'Internal server error',
+                error: error.message 
+              })
+            };
+          }
+        };
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 30
+      MemorySize: 256
+      Tracing: Active
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Ref V2StarterFunctionArn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: !Ref LogLevel
+          STARTER_FUNCTION_ARN: !Ref V2StarterFunctionArn
+      Events:
+        V2GetPhysicalPerson:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /v2/person/physical
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - api/read
+        V2GetAddresses:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /v2/person/addresses
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - api/read
+        V2GetNaturalPerson:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /v2/person/natural
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+              AuthorizationScopes:
+                - api/read
+      Tags:
+        Name: !Sub 'bancow-${Environment}-v2-api-proxy'
+        Environment: !Ref Environment
+        Version: 'v2'
+  
+  # Lambda Function - Service Function (v1)
   # NOTE: Initially deployed with InlineCode placeholder to allow infrastructure deployment
   # before the app artifact exists in S3. After the app workflow runs and uploads the artifact,
   # uncomment CodeUri and comment out InlineCode, then redeploy.
@@ -210,3 +309,15 @@ Outputs:
     Value: !Ref ServiceFunction
     Export:
       Name: !Sub 'bancow-${Environment}-service-fn-name'
+  
+  V2ProxyFunctionArn:
+    Description: V2 API Proxy Lambda function ARN
+    Value: !GetAtt V2ProxyFunction.Arn
+    Export:
+      Name: !Sub 'bancow-${Environment}-v2-proxy-fn-arn'
+  
+  V2ProxyFunctionName:
+    Description: V2 API Proxy Lambda function name
+    Value: !Ref V2ProxyFunction
+    Export:
+      Name: !Sub 'bancow-${Environment}-v2-proxy-fn-name'
