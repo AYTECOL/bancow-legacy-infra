@@ -1,5 +1,5 @@
 {
-  "Comment": "v2 - Orquestación persona natural (persona física + domicilios)",
+  "Comment": "v2 - Orquestación persona natural optimizada",
   "StartAt": "ValidarInput",
   "States": {
     "ValidarInput": {
@@ -8,6 +8,9 @@
       "Parameters": {
         "FunctionName": "${ValidateFn}",
         "Payload.$": "$"
+      },
+      "ResultSelector": {
+        "Payload.$": "$.Payload"
       },
       "ResultPath": "$",
       "Next": "ParaleloPersonaYDomicilios",
@@ -33,23 +36,13 @@
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
                 "FunctionName": "${GetPersonFn}",
-                "Payload.$": "$"
+                "Payload.$": "$.Payload"
+              },
+              "ResultSelector": {
+                "data.$": "$.Payload.data"
               },
               "ResultPath": "$.persona",
-              "OutputPath": "$",
-              "End": true,
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "States.Timeout",
-                    "Lambda.TooManyRequestsException"
-                  ],
-                  "IntervalSeconds": 1,
-                  "MaxAttempts": 1,
-                  "BackoffRate": 2
-                }
-              ],
-              "TimeoutSeconds": 12
+              "End": true
             }
           }
         },
@@ -61,38 +54,19 @@
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
                 "FunctionName": "${GetAddressesFn}",
-                "Payload.$": "$"
+                "Payload.$": "$.Payload"
+              },
+              "ResultSelector": {
+                "data.$": "$.Payload.data"
               },
               "ResultPath": "$.domicilios",
-              "OutputPath": "$",
-              "End": true,
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "States.Timeout",
-                    "Lambda.TooManyRequestsException"
-                  ],
-                  "IntervalSeconds": 1,
-                  "MaxAttempts": 1,
-                  "BackoffRate": 2
-                }
-              ],
-              "TimeoutSeconds": 12
+              "End": true
             }
           }
         }
       ],
       "ResultPath": "$.enriquecido",
-      "Next": "Normalizar",
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "ResultPath": "$.error",
-          "Next": "ProcessingFailed"
-        }
-      ]
+      "Next": "Normalizar"
     },
     "Normalizar": {
       "Type": "Task",
@@ -100,21 +74,13 @@
       "Parameters": {
         "FunctionName": "${NormalizeFn}",
         "Payload": {
-          "enriquecido.$": "$.enriquecido",
-          "correlationId.$": "$.Payload.validatedData.numeroIdentificacion"
+          "persona.$": "$.enriquecido[0].persona.data",
+          "domicilios.$": "$.enriquecido[1].domicilios.data",
+          "idConsultado.$": "$.enriquecido[0].Payload.validatedData.numeroIdentificacion"
         }
       },
-      "ResultPath": "$.resultadoFinal",
-      "OutputPath": "$",
-      "Next": "SuccessState",
-      "TimeoutSeconds": 10,
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "ResultPath": "$.error",
-          "Next": "NormalizationFailed"
-        }
-      ]
+      "OutputPath": "$.Payload",
+      "Next": "SuccessState"
     },
     "SuccessState": {
       "Type": "Pass",
@@ -130,7 +96,7 @@
     },
     "ProcessingFailed": {
       "Type": "Pass",
-      "Result": {
+      "Parameters": {
         "statusCode": 500,
         "body.$": "States.JsonToString($.error)"
       },
