@@ -124,7 +124,7 @@
       "Type": "Pass",
       "Result": {
         "statusCode": 500,
-        "body": "{\"error\": \"SOAP Service Timeout or Error\"}"
+        "body.$": "States.JsonToString($.error)"
       },
       "End": true
     },
