@@ -59,7 +59,7 @@ jobs:
           --config-file samconfig.toml \
           --config-env dev \
           --no-fail-on-empty-changeset \
-          --on-failure ROLLBACK \
+          --on-failure DO_NOTHING \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
           --parameter-overrides $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)

@@ -112,6 +112,28 @@ Resources:
               Service: states.amazonaws.com
             Action: sts:AssumeRole
       Policies:
+        - PolicyName: StepFunctionsLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub '${SfnLogGroup.Arn}:*'
         - PolicyName: InvokeLambdas
           PolicyDocument:
             Version: '2012-10-17'
@@ -152,8 +174,6 @@ Resources:
         IncludeExecutionData: true
       Tracing:
         Enabled: true
-      Policies:
-        - CloudWatchLogsFullAccess
 
   GetPersonInvokePermission:
     Type: AWS::Lambda::Permission
