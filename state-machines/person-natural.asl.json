@@ -100,12 +100,11 @@
       "Parameters": {
         "FunctionName": "${NormalizeFn}",
         "Payload": {
-          "persona.$": "$.enriquecido.persona",
-          "domicilios.$": "$.enriquecido.domicilios",
-          "validatedData.$": "$.Payload.validatedData"
+          "enriquecido.$": "$.enriquecido",
+          "correlationId.$": "$.validatedData.numeroIdentificacion"
         }
       },
-      "ResultPath": "$",
+      "OutputPath": "$.Payload",
       "Next": "SuccessState",
       "TimeoutSeconds": 10,
       "Catch": [
