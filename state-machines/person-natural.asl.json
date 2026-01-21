@@ -46,8 +46,7 @@
               },
               "ResultSelector": {
                 "success.$": "$.Payload.success",
-                "data.$": "$.Payload.data",
-                "error.$": "$.Payload.error"
+                "data.$": "$.Payload.data"
               },
               "ResultPath": "$.persona",
               "End": true,
@@ -78,8 +77,7 @@
               },
               "ResultSelector": {
                 "success.$": "$.Payload.success",
-                "data.$": "$.Payload.data",
-                "error.$": "$.Payload.error"
+                "data.$": "$.Payload.data"
               },
               "ResultPath": "$.domicilios",
               "End": true,
