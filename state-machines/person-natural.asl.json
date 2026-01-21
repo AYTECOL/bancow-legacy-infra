@@ -17,9 +17,7 @@
       "TimeoutSeconds": 5,
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "ValidationFailed"
         }
@@ -38,9 +36,7 @@
                 "FunctionName": "${GetPersonFn}",
                 "Payload.$": "$.Payload"
               },
-              "ResultSelector": {
-                "data.$": "$.Payload.data"
-              },
+              "ResultSelector": { "data.$": "$.Payload.data" },
               "ResultPath": "$.persona",
               "End": true
             }
@@ -56,9 +52,7 @@
                 "FunctionName": "${GetAddressesFn}",
                 "Payload.$": "$.Payload"
               },
-              "ResultSelector": {
-                "data.$": "$.Payload.data"
-              },
+              "ResultSelector": { "data.$": "$.Payload.data" },
               "ResultPath": "$.domicilios",
               "End": true
             }
@@ -66,7 +60,14 @@
         }
       ],
       "ResultPath": "$.enriquecido",
-      "Next": "Normalizar"
+      "Next": "Normalizar",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ProcessingFailed"
+        }
+      ]
     },
     "Normalizar": {
       "Type": "Task",
@@ -79,8 +80,16 @@
           "idConsultado.$": "$.enriquecido[0].Payload.validatedData.numeroIdentificacion"
         }
       },
+      "ResultSelector": { "Payload.$": "$.Payload" },
       "OutputPath": "$.Payload",
-      "Next": "SuccessState"
+      "Next": "SuccessState",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NormalizationFailed"
+        }
+      ]
     },
     "SuccessState": {
       "Type": "Pass",
