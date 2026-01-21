@@ -100,11 +100,58 @@ Resources:
           ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SECRETS_ARN: !Ref SoapCredentialsArn
 
+  PersonNaturalStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-person-natural-sfn-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdas
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt GetPersonFunction.Arn
+                  - !GetAtt GetAddressesFunction.Arn
+
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub '${SfnLogGroup.Arn}:*'
+
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
+
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
       Name: !Sub 'bancow-${Environment}-person-natural'
       Type: EXPRESS
+      Role: !GetAtt PersonNaturalStateMachineRole.Arn
       DefinitionUri: ../state-machines/person-natural.asl.json
       DefinitionSubstitutions:
         GetPersonFn: !GetAtt GetPersonFunction.Arn
@@ -117,27 +164,6 @@ Resources:
         IncludeExecutionData: true
       Tracing:
         Enabled: true
-      Policies:
-        - LambdaInvokePolicy:
-            FunctionName: !Ref GetPersonFunction
-        - LambdaInvokePolicy:
-            FunctionName: !Ref GetAddressesFunction
-        - Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogDelivery
-                - logs:GetLogDelivery
-                - logs:UpdateLogDelivery
-                - logs:DeleteLogDelivery
-                - logs:ListLogDeliveries
-                - logs:PutResourcePolicy
-                - logs:DescribeResourcePolicies
-                - logs:DescribeLogGroups
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource:
-                - !GetAtt SfnLogGroup.Arn
-                - !Sub '${SfnLogGroup.Arn}:*'
 
   GetPersonInvokePermission:
     Type: AWS::Lambda::Permission
