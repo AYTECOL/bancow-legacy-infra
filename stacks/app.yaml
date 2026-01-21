@@ -141,7 +141,7 @@ Resources:
           }
         };
       Role: !Ref LambdaExecutionRoleArn
-      Timeout: 30
+      Timeout: 28
       MemorySize: 256
       Tracing: Active
       Policies:

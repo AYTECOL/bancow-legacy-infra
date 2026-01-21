@@ -11,18 +11,7 @@
       },
       "ResultPath": "$",
       "Next": "ParaleloPersonaYDomicilios",
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 2,
-          "BackoffRate": 2
-        }
-      ],
+      "TimeoutSeconds": 5,
       "Catch": [
         {
           "ErrorEquals": ["States.ALL"],
@@ -48,16 +37,13 @@
               "End": true,
               "Retry": [
                 {
-                  "ErrorEquals": [
-                    "States.Timeout",
-                    "Lambda.TooManyRequestsException"
-                  ],
+                  "ErrorEquals": ["States.Timeout", "Lambda.TooManyRequestsException"],
                   "IntervalSeconds": 1,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 1,
                   "BackoffRate": 2
                 }
               ],
-              "TimeoutSeconds": 15
+              "TimeoutSeconds": 12
             }
           }
         },
@@ -75,16 +61,13 @@
               "End": true,
               "Retry": [
                 {
-                  "ErrorEquals": [
-                    "States.Timeout",
-                    "Lambda.TooManyRequestsException"
-                  ],
+                  "ErrorEquals": ["States.Timeout", "Lambda.TooManyRequestsException"],
                   "IntervalSeconds": 1,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 1,
                   "BackoffRate": 2
                 }
               ],
-              "TimeoutSeconds": 15
+              "TimeoutSeconds": 12
             }
           }
         }
@@ -108,58 +91,10 @@
       },
       "ResultPath": "$",
       "End": true,
-      "TimeoutSeconds": 10,
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException"
-          ],
-          "IntervalSeconds": 1,
-          "MaxAttempts": 2,
-          "BackoffRate": 2
-        }
-      ],
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "ResultPath": "$.error",
-          "Next": "NormalizationFailed"
-        }
-      ]
+      "TimeoutSeconds": 5
     },
-    "ValidationFailed": {
-      "Type": "Pass",
-      "Result": {
-        "statusCode": 400,
-        "body": {
-          "error": "Validation failed",
-          "details": "Input validation error"
-        }
-      },
-      "End": true
-    },
-    "ProcessingFailed": {
-      "Type": "Pass",
-      "Result": {
-        "statusCode": 500,
-        "body": {
-          "error": "Processing failed",
-          "details": "Error fetching person or address data"
-        }
-      },
-      "End": true
-    },
-    "NormalizationFailed": {
-      "Type": "Pass",
-      "Result": {
-        "statusCode": 500,
-        "body": {
-          "error": "Normalization failed",
-          "details": "Error combining results"
-        }
-      },
-      "End": true
-    }
+    "ValidationFailed": { "Type": "Pass", "Result": { "statusCode": 400, "body": "{\"error\": \"Validation failed\"}" }, "End": true },
+    "ProcessingFailed": { "Type": "Pass", "Result": { "statusCode": 500, "body": "{\"error\": \"SOAP Service Timeout or Error\"}" }, "End": true },
+    "NormalizationFailed": { "Type": "Pass", "Result": { "statusCode": 500, "body": "{\"error\": \"Normalization Error\"}" }, "End": true }
   }
 }
