@@ -100,17 +100,19 @@
         "Payload.$": "$"
       },
       "ResultPath": "$",
-      "End": true,
+      "Next": "SuccessState",
       "TimeoutSeconds": 10,
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "NormalizationFailed"
         }
       ]
+    },
+    "SuccessState": {
+      "Type": "Pass",
+      "End": true
     },
     "ValidationFailed": {
       "Type": "Pass",
