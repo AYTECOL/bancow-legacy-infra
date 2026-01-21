@@ -281,8 +281,8 @@ Resources:
           const sfn = new SFNClient({});
           
           exports.handler = async (event) => {
-            const stateMachineArn = process.env.STATE_MACHINE_ARN;
             try {
+              const stateMachineArn = process.env.STATE_MACHINE_ARN;
               const body = event.body ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body) : event;
           
               const command = new StartSyncExecutionCommand({
@@ -292,27 +292,34 @@ Resources:
           
               const response = await sfn.send(command);
           
-              if (response.status === 'SUCCEEDED') {
+              // Si hay un output de la Step Function, lo analizamos
+              if (response.output) {
                 const sfnOutput = JSON.parse(response.output);
-                // Si la SFN ya devolvió un formato Lambda Proxy, lo pasamos tal cual
-                if (sfnOutput.statusCode) return sfnOutput;
           
+                // Si el output ya tiene la estructura de API Gateway (statusCode y body),
+                // lo retornamos directamente sin envolverlo.
+                if (sfnOutput.hasOwnProperty('statusCode')) {
+                  return sfnOutput;
+                }
+          
+                // Si es un output plano, lo envolvemos nosotros
                 return {
                   statusCode: 200,
                   headers: { "Content-Type": "application/json", "X-V2-Engine": "StepFunctions" },
                   body: response.output
                 };
-              } else {
-                return {
-                  statusCode: 500,
-                  body: JSON.stringify({
-                    error: 'SFN_EXECUTION_FAILED',
-                   type: response.error, 
-                   details: response.cause
-                })
+              }
+          
+              return {
+                statusCode: 500,
+                body: JSON.stringify({ error: 'SFN_NO_OUTPUT', status: response.status })
               };
             } catch (error) {
-              return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+              console.error("Starter Error:", error);
+              return { 
+                statusCode: 500, 
+                body: JSON.stringify({ error: 'STARTER_CRITICAL_ERROR', message: error.message }) 
+              };
             }
           };
       Environment:
