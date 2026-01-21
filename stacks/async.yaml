@@ -123,29 +123,6 @@ Resources:
                   - !GetAtt GetPersonFunction.Arn
                   - !GetAtt GetAddressesFunction.Arn
 
-        - PolicyName: CloudWatchLogs
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource:
-                  - !Sub '${SfnLogGroup.Arn}:*'
-
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogDelivery
-                  - logs:GetLogDelivery
-                  - logs:UpdateLogDelivery
-                  - logs:DeleteLogDelivery
-                  - logs:ListLogDeliveries
-                  - logs:PutResourcePolicy
-                  - logs:DescribeResourcePolicies
-                  - logs:DescribeLogGroups
-                Resource: "*"
-
         - PolicyName: XRayTracing
           PolicyDocument:
             Version: '2012-10-17'
@@ -175,6 +152,8 @@ Resources:
         IncludeExecutionData: true
       Tracing:
         Enabled: true
+      Policies:
+        - CloudWatchLogsFullAccess
 
   GetPersonInvokePermission:
     Type: AWS::Lambda::Permission
