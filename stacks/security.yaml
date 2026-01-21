@@ -8,7 +8,7 @@ Parameters:
   Environment:
     Type: String
     Description: Environment name
-    AllowedValues: [dev, uat, prod]
+    AllowedValues: [ dev, uat, prod ]
 
 Resources:
   # IAM Role for Lambda Execution
@@ -29,6 +29,16 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
         - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: !Sub 'bancow-${Environment}-v2-invocation-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                # Permitimos invocar cualquier función de la v2 en esta cuenta/región
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:bancow-${Environment}-v2-*'
       Tags:
         - Key: Name
           Value: !Sub 'bancow-${Environment}-lambda-execution-role'
@@ -158,7 +168,7 @@ Resources:
       Name: !Sub 'bancow-${Environment}-webacl'
       Scope: REGIONAL
       DefaultAction:
-        Allow: {}
+        Allow: { }
       VisibilityConfig:
         CloudWatchMetricsEnabled: true
         MetricName: !Sub 'bancow-${Environment}-webacl'
@@ -167,7 +177,7 @@ Resources:
         - Name: AWSManagedRulesCommonRuleSet
           Priority: 1
           OverrideAction:
-            None: {}
+            None: { }
           Statement:
             ManagedRuleGroupStatement:
               VendorName: AWS
@@ -179,7 +189,7 @@ Resources:
         - Name: AWSManagedRulesKnownBadInputsRuleSet
           Priority: 2
           OverrideAction:
-            None: {}
+            None: { }
           Statement:
             ManagedRuleGroupStatement:
               VendorName: AWS
