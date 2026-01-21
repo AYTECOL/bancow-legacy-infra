@@ -36,7 +36,9 @@
                 "FunctionName": "${GetPersonFn}",
                 "Payload.$": "$.Payload"
               },
-              "ResultSelector": { "data.$": "$.Payload.data" },
+              "ResultSelector": { 
+                "Payload.$": "$.Payload"
+              },
               "ResultPath": "$.persona",
               "End": true
             }
@@ -52,7 +54,9 @@
                 "FunctionName": "${GetAddressesFn}",
                 "Payload.$": "$.Payload"
               },
-              "ResultSelector": { "data.$": "$.Payload.data" },
+              "ResultSelector": { 
+                "Payload.$": "$.Payload"
+              },
               "ResultPath": "$.domicilios",
               "End": true
             }
