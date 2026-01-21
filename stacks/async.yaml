@@ -64,7 +64,7 @@ Resources:
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
-      LogGroupName: !Sub 'bancow-${Environment}-v2-sfn-clean-logs'
+      LogGroupName: !Sub '/aws/vendedlogs/states/bancow-${Environment}-v2-sfn'
       RetentionInDays: 14
   #      Tags:
   #        - Key: Name
@@ -230,7 +230,9 @@ Resources:
       Logging:
         Destinations:
           - CloudWatchLogsLogGroup:
-              LogGroupArn: !Sub '${SfnLogGroupFinal.Arn}:*'
+              LogGroupArn: !GetAtt SfnLogGroupFinal.Arn
+        IncludeExecutionData: true
+        Level: ALL
       Tracing:
         Enabled: true
       Policies:
@@ -243,6 +245,18 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref NormalizeFunction
         - CloudWatchLogsFullAccess
+        - Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogDelivery"
+                  - "logs:GetLogDelivery"
+                  - "logs:UpdateLogDelivery"
+                  - "logs:DeleteLogDelivery"
+                  - "logs:ListLogDeliveries"
+                  - "logs:PutResourcePolicy"
+                  - "logs:DescribeResourcePolicies"
+                  - "logs:DescribeLogGroups"
+                Resource: "*"
       Tags:
         Name: !Sub 'bancow-${Environment}-v2-person-natural'
         Environment: !Ref Environment
