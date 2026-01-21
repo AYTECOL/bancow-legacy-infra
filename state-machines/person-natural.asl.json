@@ -1,70 +1,125 @@
 {
-  "Comment": "v2 - Orquestación persona natural optimizada",
-  "StartAt": "ValidarInput",
+  "Comment": "BANCOW - Natural Person Orchestration",
+  "StartAt": "Init",
   "States": {
-    "ValidarInput": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "Parameters": {
-        "FunctionName": "${ValidateFn}",
-        "Payload.$": "$"
-      },
-      "ResultSelector": {
-        "Payload.$": "$.Payload"
-      },
-      "ResultPath": "$",
-      "Next": "ParaleloPersonaYDomicilios",
-      "TimeoutSeconds": 5,
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "ResultPath": "$.error",
-          "Next": "ValidationFailed"
-        }
-      ]
+    "Init": {
+      "Type": "Pass",
+      "ResultPath": "$.request",
+      "Next": "ValidateMinimalInput"
     },
-    "ParaleloPersonaYDomicilios": {
+    "ValidateMinimalInput": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.numeroIdentificacion",
+          "IsPresent": true,
+          "Next": "ValidatePais"
+        }
+      ],
+      "Default": "ValidationFailed"
+    },
+    "ValidatePais": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.pais",
+          "IsPresent": true,
+          "Next": "DecideDomicilios"
+        }
+      ],
+      "Default": "ValidationFailed"
+    },
+    "DecideDomicilios": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.consultarDomiciliosPersonas",
+          "BooleanEquals": true,
+          "Next": "ParallelPersonaDomicilios"
+        }
+      ],
+      "Default": "OnlyPersona"
+    },
+    "ParallelPersonaDomicilios": {
       "Type": "Parallel",
+      "ResultPath": "$.parallel",
       "Branches": [
         {
-          "StartAt": "GetPersona",
+          "StartAt": "GetPhysicalPerson",
           "States": {
-            "GetPersona": {
+            "GetPhysicalPerson": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
                 "FunctionName": "${GetPersonFn}",
-                "Payload.$": "$.Payload"
+                "Payload.$": "$.request"
               },
-              "ResultSelector": { 
-                "Payload.$": "$.Payload"
+              "ResultSelector": {
+                "persona.$": "$.Payload"
               },
-              "ResultPath": "$.persona",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "PhysicalPersonFailed"
+                }
+              ],
               "End": true
+            },
+            "PhysicalPersonFailed": {
+              "Type": "Fail",
+              "Error": "PhysicalPersonError",
+              "Cause": "Failed to retrieve physical person data"
             }
           }
         },
         {
-          "StartAt": "GetDomicilios",
+          "StartAt": "GetAddresses",
           "States": {
-            "GetDomicilios": {
+            "GetAddresses": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
                 "FunctionName": "${GetAddressesFn}",
-                "Payload.$": "$.Payload"
+                "Payload.$": "$.request"
               },
-              "ResultSelector": { 
-                "Payload.$": "$.Payload"
+              "ResultSelector": {
+                "domicilios.$": "$.Payload"
               },
-              "ResultPath": "$.domicilios",
+              "Retry": [
+                {
+                  "ErrorEquals": ["States.TaskFailed"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "AddressesFailed"
+                }
+              ],
               "End": true
+            },
+            "AddressesFailed": {
+              "Type": "Fail",
+              "Error": "AddressesError",
+              "Cause": "Failed to retrieve addresses data"
             }
           }
         }
       ],
-      "ResultPath": "$.enriquecido",
-      "Next": "Normalizar",
+      "Next": "MergeParallelResults",
       "Catch": [
         {
           "ErrorEquals": ["States.ALL"],
@@ -73,54 +128,72 @@
         }
       ]
     },
-    "Normalizar": {
+    "MergeParallelResults": {
+      "Type": "Pass",
+      "Parameters": {
+        "personaFisicaResponse.$": "$.parallel[0].persona",
+        "domiciliosPersonasResponse.$": "$.parallel[1].domicilios",
+        "informacionFatcaResponse": "",
+        "informacionFinancieraResponse": "",
+        "informacionVictimasHechosViolentosResponse": "",
+        "referenciasPersonasResponse": ""
+      },
+      "Next": "Success"
+    },
+    "OnlyPerson": {
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
-        "FunctionName": "${NormalizeFn}",
-        "Payload": {
-          "enriquecido.$": "$.enriquecido",
-          "correlationId.$": "$.Payload.validatedData.numeroIdentificacion"
-        }
+        "FunctionName": "${GetPersonFn}",
+        "Payload.$": "$.request"
       },
-      "ResultSelector": { "Payload.$": "$.Payload" },
-      "OutputPath": "$.Payload",
-      "Next": "SuccessState",
+      "ResultSelector": {
+        "persona.$": "$.Payload"
+      },
+      "ResultPath": "$.result",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
       "Catch": [
         {
           "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
-          "Next": "NormalizationFailed"
+          "Next": "ProcessingFailed"
         }
-      ]
+      ],
+      "Next": "PrepareSingleResult"
     },
-    "SuccessState": {
-      "Type": "Pass",
-      "End": true
-    },
-    "ValidationFailed": {
-      "Type": "Pass",
-      "Result": {
-        "statusCode": 400,
-        "body": "{\"error\": \"Validation failed\"}"
-      },
-      "End": true
-    },
-    "ProcessingFailed": {
+    "PrepareSingleResult": {
       "Type": "Pass",
       "Parameters": {
-        "statusCode": 500,
-        "body.$": "States.JsonToString($.error)"
+        "personaFisicaResponse.$": "$.result.persona",
+        "domiciliosPersonasResponse": {
+          "domicilioPersona": []
+        },
+        "informacionFatcaResponse": "",
+        "informacionFinancieraResponse": "",
+        "informacionVictimasHechosViolentosResponse": "",
+        "referenciasPersonasResponse": ""
       },
-      "End": true
+      "Next": "Success"
     },
-    "NormalizationFailed": {
-      "Type": "Pass",
-      "Result": {
-        "statusCode": 500,
-        "body": "{\"error\": \"Normalization Error\"}"
-      },
-      "End": true
+    "ValidationFailed": {
+      "Type": "Fail",
+      "Error": "ValidationError",
+      "Cause": "Missing required input fields: numeroIdentificacion and pais are required"
+    },
+    "ProcessingFailed": {
+      "Type": "Fail",
+      "Error": "ProcessingError",
+      "Cause": "Unexpected error during processing"
+    },
+    "Success": {
+      "Type": "Succeed"
     }
   }
 }

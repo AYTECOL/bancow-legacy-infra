@@ -10,51 +10,51 @@ Parameters:
     Type: String
     Description: Environment name
     AllowedValues: [ dev, uat, prod ]
-  
+
   # Network parameters (passed from root)
   VpcId:
     Type: String
     Description: VPC ID for Lambda
-  
+
   PrivateSubnetIds:
     Type: CommaDelimitedList
     Description: Private subnet IDs for Lambda (comma-separated)
-  
+
   LambdaSecurityGroupId:
     Type: String
     Description: Security Group ID for Lambda
-  
+
   # Security parameters (passed from root)
   LambdaExecutionRoleArn:
     Type: String
     Description: ARN of Lambda execution role
-  
+
   UserPoolArn:
     Type: String
     Description: ARN of Cognito User Pool
-  
+
   WebACLArn:
     Type: String
     Description: ARN of WAF Web ACL
-  
+
   # Data parameters (passed from root)
   SoapCredentialsArn:
     Type: String
     Description: ARN of Secrets Manager secret for SOAP credentials
-  
+
   # Artifact parameters (passed from root)
   LambdaArtifactBucket:
     Type: String
     Description: S3 bucket containing Lambda deployment artifacts
-  
+
   LambdaArtifactKey:
     Type: String
     Description: S3 key for Lambda deployment package
-  
+
   # V2 Step Functions integration
-  V2StarterFunctionArn:
+  PersonNaturalStateMachineArn:
     Type: String
-    Description: ARN of the v2 Starter Lambda function from Async stack
+    Description: ARN of the v2 Step Function from Async stack
 
   # Application configuration
   LogLevel:
@@ -76,6 +76,27 @@ Mappings:
       SOAPENDPOINT: 'https://10.40.7.18:8017/bancow/servlet/com.dlya.bantotal.odwsbt_BTPersonas_v1'
 
 Resources:
+  # IAM Role for API Gateway to execute Step Functions
+  ApiStepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ExecuteStepFunctions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartSyncExecution
+                Resource: !Ref PersonNaturalStateMachineArn
+
   # API Gateway REST API
   ApiGateway:
     Type: AWS::Serverless::Api
@@ -83,115 +104,83 @@ Resources:
       Name: !Sub 'bancow-${Environment}-api'
       StageName: !Ref Environment
       EndpointConfiguration: REGIONAL
-      Cors:
-        AllowOrigin: "'*'"
-        AllowHeaders: "'Authorization,Content-Type'"
-        AllowMethods: "'GET,POST,OPTIONS'"
-      Auth:
-        Authorizers:
-          CognitoAuthorizer:
-            Type: COGNITO_USER_POOLS
-            UserPoolArn: !Ref UserPoolArn
-        DefaultAuthorizer: CognitoAuthorizer
+      DefinitionBody:
+        openapi: '3.0.1'
+        info:
+          title: !Sub 'bancow-${Environment}-api'
+          version: '1.0'
+        paths:
+          /person/physical:
+            post:
+              security:
+                - CognitoAuthorizer: []
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ServiceFunction.Arn}/invocations'
+              responses: {}
+          /person/addresses:
+            post:
+              security:
+                - CognitoAuthorizer: []
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ServiceFunction.Arn}/invocations'
+              responses: {}
+          /person/natural:
+            post:
+              security:
+                - CognitoAuthorizer: []
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                type: aws
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:states:action/StartSyncExecution'
+                httpMethod: POST
+                credentials: !GetAtt ApiStepFunctionsRole.Arn
+                requestTemplates:
+                  application/json: !Sub |
+                    {
+                      "stateMachineArn": "${PersonNaturalStateMachineArn}",
+                      "input": "$util.escapeJavaScript($input.json('$'))"
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        $input.body
+              responses:
+                '200':
+                  description: OK
+        components:
+          securitySchemes:
+            CognitoAuthorizer:
+              type: apiKey
+              name: Authorization
+              in: header
+              x-amazon-apigateway-authtype: cognito_user_pools
+              x-amazon-apigateway-authorizer:
+                providerARNs:
+                  - !Ref UserPoolArn
+                type: cognito_user_pools
+        x-amazon-apigateway-cors:
+          allowOrigins:
+            - '*'
+          allowMethods:
+            - GET
+            - POST
+            - OPTIONS
+          allowHeaders:
+            - Authorization
+            - Content-Type
       TracingEnabled: true
       Tags:
         Name: !Sub 'bancow-${Environment}-api'
         Environment: !Ref Environment
 
-  # Lambda Function - V2 Proxy Function
-  # This function acts as a proxy between API Gateway and the v2 StarterFunction in the Async stack
-  V2ProxyFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub 'bancow-${Environment}-v2-api-proxy'
-      Description: !Sub 'BANCOW v2 API Proxy - Routes requests to Step Functions (${Environment})'
-      Runtime: nodejs22.x
-      Handler: index.handler
-      InlineCode: |
-        const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
-        const lambda = new LambdaClient({});
-        
-        exports.handler = async (event) => {
-          console.log('V2 API Proxy - Received event:', JSON.stringify(event));
-          
-          const starterFunctionArn = process.env.STARTER_FUNCTION_ARN;
-          
-          try {
-            const command = new InvokeCommand({
-              FunctionName: starterFunctionArn,
-              InvocationType: 'RequestResponse',
-              Payload: JSON.stringify(event)
-            });
-            
-            const response = await lambda.send(command);
-            const payload = JSON.parse(new TextDecoder().decode(response.Payload));
-            
-            console.log('V2 API Proxy - StarterFunction response:', JSON.stringify(payload));
-            
-            return payload;
-          } catch (error) {
-            console.error('V2 API Proxy - Error invoking StarterFunction:', error);
-            return {
-              statusCode: 500,
-              body: JSON.stringify({ 
-                message: 'Internal server error',
-                error: error.message 
-              })
-            };
-          }
-        };
-      Role: !Ref LambdaExecutionRoleArn
-      Timeout: 28
-      MemorySize: 256
-      Tracing: Active
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - lambda:InvokeFunction
-              Resource: !Ref V2StarterFunctionArn
-      Environment:
-        Variables:
-          ENVIRONMENT: !Ref Environment
-          LOG_LEVEL: !Ref LogLevel
-          STARTER_FUNCTION_ARN: !Ref V2StarterFunctionArn
-      Events:
-        V2GetPhysicalPerson:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /v2/person/physical
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-        V2GetAddresses:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /v2/person/addresses
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-        V2GetNaturalPerson:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /v2/person/natural
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-      Tags:
-        Name: !Sub 'bancow-${Environment}-v2-api-proxy'
-        Environment: !Ref Environment
-        Version: 'v2'
-  
   # Lambda Function - Service Function (v1)
   # NOTE: Initially deployed with InlineCode placeholder to allow infrastructure deployment
   # before the app artifact exists in S3. After the app workflow runs and uploads the artifact,
@@ -200,72 +189,34 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-service-fn'
-      Description: !Sub 'BANCOW Legacy SOAP REST Service (${Environment})'
       Runtime: nodejs22.x
       Handler: index.main
-#      InlineCode: |
-#        exports.handler = async (event) => {
-#          console.log("Infraestructura desplegada. Esperando código real...");
-#          return {
-#            statusCode: 200,
-#            body: JSON.stringify({ message: "Bancow Infra Ready - Awaiting App Deployment" })
-#          };
-#        };
       CodeUri:
         Bucket: !Sub 'bancow-artifacts-${Environment}'
         Key: 'lambda/bancow-service.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 30
       MemorySize: 512
-      Tracing: Active
       VpcConfig:
         SubnetIds: !Ref PrivateSubnetIds
         SecurityGroupIds:
           - !Ref LambdaSecurityGroupId
-      LoggingConfig:
-        LogGroup: !Sub '/aws/lambda/bancow-${Environment}-service-fn'
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
-          POWERTOOLS_SERVICE_NAME: 'bancow-legacy-soap-rest'
-          ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
+          ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SOAP_CREDENTIALS_SECRET_ARN: !Ref SoapCredentialsArn
-      Events:
-        GetPhysicalPerson:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /person/physical
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-        GetAddresses:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /person/addresses
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-        GetNaturalPerson:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /person/natural
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-              AuthorizationScopes:
-                - api/read
-      Tags:
-        Name: !Sub 'bancow-${Environment}-service-fn'
-        Environment: !Ref Environment
+
+  # Lambda Permissions to allow API Gateway to invoke the function
+  ServiceFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ServiceFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/person/*'
 
   # WAF Web ACL Association
   WebACLAssociation:
@@ -285,39 +236,28 @@ Outputs:
     Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
     Export:
       Name: !Sub 'bancow-${Environment}-api-url'
-  
+
   ApiId:
     Description: API Gateway ID
     Value: !Ref ApiGateway
     Export:
       Name: !Sub 'bancow-${Environment}-api-id'
-  
+
   UserPoolArn:
     Description: Cognito User Pool ARN
     Value: !Ref UserPoolArn
     Export:
       Name: !Sub 'bancow-${Environment}-user-pool-arn'
-  
+
   ServiceFunctionArn:
     Description: Lambda function ARN
     Value: !GetAtt ServiceFunction.Arn
     Export:
       Name: !Sub 'bancow-${Environment}-service-fn-arn'
-  
+
   ServiceFunctionName:
     Description: Lambda function name
     Value: !Ref ServiceFunction
     Export:
       Name: !Sub 'bancow-${Environment}-service-fn-name'
-  
-  V2ProxyFunctionArn:
-    Description: V2 API Proxy Lambda function ARN
-    Value: !GetAtt V2ProxyFunction.Arn
-    Export:
-      Name: !Sub 'bancow-${Environment}-v2-proxy-fn-arn'
-  
-  V2ProxyFunctionName:
-    Description: V2 API Proxy Lambda function name
-    Value: !Ref V2ProxyFunction
-    Export:
-      Name: !Sub 'bancow-${Environment}-v2-proxy-fn-name'
+

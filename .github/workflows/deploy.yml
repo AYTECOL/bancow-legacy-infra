@@ -6,6 +6,7 @@ on:
       - dev
       - nonprod
       - master
+      - feat/step-fn
   workflow_dispatch:
     inputs:
       environment:
@@ -25,7 +26,7 @@ jobs:
   deploy-dev:
     name: Deploy to DEV
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/feat/step-fn') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
     runs-on: ubuntu-latest
     environment: dev

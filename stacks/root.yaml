@@ -9,35 +9,35 @@ Parameters:
     Type: String
     Description: Environment name
     AllowedValues: [dev, uat, prod]
-  
+
   # Network parameters (manual or imported)
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC ID where resources will be deployed
-  
+
   PrivateSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Private subnet IDs for Lambda functions
-  
+
   LambdaSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
     Description: Security Group ID for Lambda functions
-  
+
   # App parameters
   LambdaArtifactBucket:
     Type: String
     Description: S3 bucket containing Lambda deployment artifacts
-  
+
   LambdaArtifactKey:
     Type: String
     Description: S3 key for Lambda deployment package
 
   # V2 (Async) parameters
-  V2ArtifactBucket:
+  ArtifactBucket:
     Type: String
     Description: S3 bucket containing v2 Lambda deployment artifacts
 
-  V2ArtifactKey:
+  ArtifactKey:
     Type: String
     Description: S3 key for v2 Lambda deployment package (e.g., v2/dev/latest/bancow-v2-lambda.zip)
 
@@ -50,7 +50,7 @@ Parameters:
 Resources:
   # Network Stack (or just parameters if using existing VPC)
   # In this case, network is managed externally, so we skip this stack
-  
+
   # Security Stack - IAM Roles, Cognito, WAF
   SecurityStack:
     Type: AWS::CloudFormation::Stack
@@ -65,7 +65,7 @@ Resources:
           Value: !Ref Environment
         - Key: Stack
           Value: Security
-  
+
   # Data Stack - S3, Secrets Manager
   DataStack:
     Type: AWS::CloudFormation::Stack
@@ -78,31 +78,34 @@ Resources:
           Value: !Ref Environment
         - Key: Stack
           Value: Data
-  
-  # Async Stack - Step Functions orchestration (deployed first to make StarterFunction available)
+
+  # Async Stack - Step Functions orchestration (atomic lambdas + workflows)
   AsyncStack:
     Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TemplateURL: async.yaml
       Parameters:
         Environment: !Ref Environment
-        VpcId: !Ref VpcId
         PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]
         LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
         LambdaExecutionRoleArn: !GetAtt SecurityStack.Outputs.LambdaExecutionRoleArn
         SoapCredentialsArn: !GetAtt DataStack.Outputs.SoapCredentialsArn
-        V2ArtifactBucket: !Ref V2ArtifactBucket
-        V2ArtifactKey: !Ref V2ArtifactKey
+        ArtifactBucket: !Ref LambdaArtifactBucket
+        ArtifactKey: !Ref LambdaArtifactKey
         LogLevel: !Ref LogLevel
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Stack
           Value: Async
-  
+
   # App Stack - Lambda, API Gateway (v1 + v2 routes)
   AppStack:
     Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TemplateURL: app.yaml
       Parameters:
@@ -116,44 +119,33 @@ Resources:
         WebACLArn: !GetAtt SecurityStack.Outputs.WebACLArn
         LambdaArtifactBucket: !Ref LambdaArtifactBucket
         LambdaArtifactKey: !Ref LambdaArtifactKey
-        V2StarterFunctionArn: !GetAtt AsyncStack.Outputs.StarterFunctionArn
+        PersonNaturalStateMachineArn: !GetAtt AsyncStack.Outputs.StateMachineArn
         LogLevel: !Ref LogLevel
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Stack
           Value: App
-  
+
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
     Value: !GetAtt AppStack.Outputs.ApiUrl
-  
+
   CognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !GetAtt SecurityStack.Outputs.UserPoolClientId
-  
+
   CognitoAuthDomain:
     Description: Cognito Auth Domain
     Value: !GetAtt SecurityStack.Outputs.CognitoAuthDomain
-  
+
   CognitoTokenUrl:
     Description: Cognito Token URL
     Value: !GetAtt SecurityStack.Outputs.CognitoTokenUrl
-  
+
   # Async Stack Outputs
-  V2StarterFunctionArn:
-    Description: ARN of the v2 Starter Lambda function
-    Value: !GetAtt AsyncStack.Outputs.StarterFunctionArn
-
-  V2StarterFunctionName:
-    Description: Name of the v2 Starter Lambda function
-    Value: !GetAtt AsyncStack.Outputs.StarterFunctionName
-
-  V2StateMachineArn:
-    Description: ARN of the v2 Process X State Machine
+  PersonNaturalStateMachineArn:
+    Description: ARN of the Person Natural State Machine
     Value: !GetAtt AsyncStack.Outputs.StateMachineArn
 
-  V2StateMachineName:
-    Description: Name of the v2 Process X State Machine
-    Value: !GetAtt AsyncStack.Outputs.StateMachineName
