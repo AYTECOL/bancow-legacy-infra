@@ -4,9 +4,12 @@
   "States": {
     "Init": {
       "Type": "Pass",
-      "ResultPath": "$.request",
+      "Parameters": {
+        "request.$": "$"
+      },
       "Next": "ValidateMinimalInput"
     },
+
     "ValidateMinimalInput": {
       "Type": "Choice",
       "Choices": [
@@ -18,6 +21,7 @@
       ],
       "Default": "ValidationFailed"
     },
+
     "ValidatePais": {
       "Type": "Choice",
       "Choices": [
@@ -29,6 +33,7 @@
       ],
       "Default": "ValidationFailed"
     },
+
     "DecideDomicilios": {
       "Type": "Choice",
       "Choices": [
@@ -38,8 +43,9 @@
           "Next": "ParallelPersonaDomicilios"
         }
       ],
-      "Default": "OnlyPersona"
+      "Default": "OnlyPerson"
     },
+
     "ParallelPersonaDomicilios": {
       "Type": "Parallel",
       "ResultPath": "$.parallel",
@@ -68,7 +74,6 @@
               "Catch": [
                 {
                   "ErrorEquals": ["States.ALL"],
-                  "ResultPath": "$.error",
                   "Next": "PhysicalPersonFailed"
                 }
               ],
@@ -105,7 +110,6 @@
               "Catch": [
                 {
                   "ErrorEquals": ["States.ALL"],
-                  "ResultPath": "$.error",
                   "Next": "AddressesFailed"
                 }
               ],
@@ -119,15 +123,9 @@
           }
         }
       ],
-      "Next": "MergeParallelResults",
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "ResultPath": "$.error",
-          "Next": "ProcessingFailed"
-        }
-      ]
+      "Next": "MergeParallelResults"
     },
+
     "MergeParallelResults": {
       "Type": "Pass",
       "Parameters": {
@@ -140,6 +138,7 @@
       },
       "Next": "Success"
     },
+
     "OnlyPerson": {
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
@@ -162,12 +161,12 @@
       "Catch": [
         {
           "ErrorEquals": ["States.ALL"],
-          "ResultPath": "$.error",
           "Next": "ProcessingFailed"
         }
       ],
       "Next": "PrepareSingleResult"
     },
+
     "PrepareSingleResult": {
       "Type": "Pass",
       "Parameters": {
@@ -182,16 +181,19 @@
       },
       "Next": "Success"
     },
+
     "ValidationFailed": {
       "Type": "Fail",
       "Error": "ValidationError",
-      "Cause": "Missing required input fields: numeroIdentificacion and pais are required"
+      "Cause": "Missing required input fields"
     },
+
     "ProcessingFailed": {
       "Type": "Fail",
       "Error": "ProcessingError",
       "Cause": "Unexpected error during processing"
     },
+
     "Success": {
       "Type": "Succeed"
     }
