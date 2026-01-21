@@ -35,8 +35,8 @@
                 "FunctionName": "${GetPersonFn}",
                 "Payload.$": "$"
               },
-              "ResultPath": "$.persona",
               "OutputPath": "$.Payload",
+              "ResultPath": "$",
               "End": true,
               "Retry": [
                 {
@@ -63,8 +63,8 @@
                 "FunctionName": "${GetAddressesFn}",
                 "Payload.$": "$"
               },
-              "ResultPath": "$.domicilios",
               "OutputPath": "$.Payload",
+              "ResultPath": "$",
               "End": true,
               "Retry": [
                 {
@@ -82,6 +82,10 @@
           }
         }
       ],
+      "ResultSelector": {
+        "persona.$": "$[0]",
+        "domicilios.$": "$[1]"
+      },
       "ResultPath": "$.enriquecido",
       "Next": "Normalizar",
       "Catch": [
