@@ -368,6 +368,16 @@ Resources:
       Principal: states.amazonaws.com
       SourceArn: !Ref PersonNaturalStateMachine
 
+  BantotalOutboundRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 8017
+      ToPort: 8017
+      CidrIp: 0.0.0.0/0
+      Description: "Permitir salida puerto 8017 para consulta de personas v2"
+
 Outputs:
   StateMachineArn:
     Description: ARN of the Person Natural State Machine
