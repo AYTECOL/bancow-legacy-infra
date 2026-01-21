@@ -146,8 +146,19 @@ Resources:
                   - logs:DescribeLogGroups
                 Resource: "*"
 
+        - PolicyName: XRayTracing
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine
+    DependsOn: SfnLogGroup
     Properties:
       Name: !Sub 'bancow-${Environment}-person-natural'
       Type: EXPRESS
