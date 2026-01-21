@@ -36,6 +36,7 @@
                 "Payload.$": "$"
               },
               "ResultPath": "$.persona",
+              "OutputPath": "$.Payload",
               "End": true,
               "Retry": [
                 {
@@ -63,6 +64,7 @@
                 "Payload.$": "$"
               },
               "ResultPath": "$.domicilios",
+              "OutputPath": "$.Payload",
               "End": true,
               "Retry": [
                 {
