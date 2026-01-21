@@ -101,10 +101,11 @@
         "FunctionName": "${NormalizeFn}",
         "Payload": {
           "enriquecido.$": "$.enriquecido",
-          "correlationId.$": "$.validatedData.numeroIdentificacion"
+          "correlationId.$": "$.Payload.validatedData.numeroIdentificacion"
         }
       },
-      "OutputPath": "$.Payload",
+      "ResultPath": "$.resultadoFinal",
+      "OutputPath": "$",
       "Next": "SuccessState",
       "TimeoutSeconds": 10,
       "Catch": [
