@@ -9,7 +9,7 @@ Parameters:
   Environment:
     Type: String
     Description: Environment name
-    AllowedValues: [dev, uat, prod]
+    AllowedValues: [ dev, uat, prod ]
   
   VpcId:
     Type: String
@@ -42,7 +42,7 @@ Parameters:
   LogLevel:
     Type: String
     Default: INFO
-    AllowedValues: [DEBUG, INFO, WARN, ERROR]
+    AllowedValues: [ DEBUG, INFO, WARN, ERROR ]
     Description: Application log level
 
 Mappings:
@@ -66,11 +66,11 @@ Resources:
     Properties:
       LogGroupName: !Sub 'bancow-${Environment}-v2-sfn-clean-logs'
       RetentionInDays: 14
-#      Tags:
-#        - Key: Name
-#          Value: !Sub 'bancow-${Environment}-v2-sfn-logs'
-#        - Key: Environment
-#          Value: !Ref Environment
+  #      Tags:
+  #        - Key: Name
+  #          Value: !Sub 'bancow-${Environment}-v2-sfn-logs'
+  #        - Key: Environment
+  #          Value: !Ref Environment
 
   # Lambda Function - Validate
   ValidateFunction:
@@ -131,8 +131,8 @@ Resources:
           HANDLER_MODE: person
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
-          SOAP_ENDPOINT: !FindInMap [SoapConfig, !Ref Environment, SOAPENDPOINT]
-          ALLOW_INSECURE_TLS: !FindInMap [SoapConfig, !Ref Environment, ALLOWINSECURETLS]
+          SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
+          ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SECRETS_ARN: !Ref SoapCredentialsArn
           NODE_OPTIONS: '--enable-source-maps'
       Tags:
@@ -168,8 +168,8 @@ Resources:
           HANDLER_MODE: addresses
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
-          SOAP_ENDPOINT: !FindInMap [SoapConfig, !Ref Environment, SOAPENDPOINT]
-          ALLOW_INSECURE_TLS: !FindInMap [SoapConfig, !Ref Environment, ALLOWINSECURETLS]
+          SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
+          ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SECRETS_ARN: !Ref SoapCredentialsArn
           NODE_OPTIONS: '--enable-source-maps'
       Tags:
@@ -268,34 +268,33 @@ Resources:
           
           exports.handler = async (event) => {
             console.log('Starter - Received event:', JSON.stringify(event));
-            
             const stateMachineArn = process.env.STATE_MACHINE_ARN;
-            
+          
             try {
-              // Extract body from API Gateway event
               let input = event;
               if (event.body) {
                 input = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
               }
-              
-              // Add correlation ID
+          
               input.correlationId = event.requestContext?.requestId || Date.now().toString();
-              
+          
               const command = new StartSyncExecutionCommand({
                 stateMachineArn: stateMachineArn,
                 name: `exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 input: JSON.stringify(input)
               });
-              
+          
               const response = await sfn.send(command);
-              
-              console.log('Starter - Execution status:', response.status);
-              
+          
               if (response.status === 'SUCCEEDED') {
                 const output = JSON.parse(response.output);
-                return output;
+                // CORRECCIÓN: Devolver formato compatible con API Gateway Proxy
+                return {
+                  statusCode: output.statusCode || 200,
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(output) // El body DEBE ser un string
+                };
               } else {
-                console.error('Starter - Execution failed:', response.error, response.cause);
                 return {
                   statusCode: 500,
                   body: JSON.stringify({ 
@@ -305,7 +304,6 @@ Resources:
                 };
               }
             } catch (error) {
-              console.error('Starter - Error:', error);
               return {
                 statusCode: 500,
                 body: JSON.stringify({ 
