@@ -133,7 +133,11 @@ Resources:
                 - logs:PutResourcePolicy
                 - logs:DescribeResourcePolicies
                 - logs:DescribeLogGroups
-              Resource: "*"
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource:
+                - !GetAtt SfnLogGroup.Arn
+                - !Sub '${SfnLogGroup.Arn}:*'
 
   GetPersonInvokePermission:
     Type: AWS::Lambda::Permission
