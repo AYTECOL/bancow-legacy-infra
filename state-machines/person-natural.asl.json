@@ -44,10 +44,6 @@
                 "FunctionName": "${GetPersonFn}",
                 "Payload.$": "$"
               },
-              "ResultSelector": {
-                "success.$": "$.Payload.success",
-                "data.$": "$.Payload.data"
-              },
               "ResultPath": "$.persona",
               "End": true,
               "Retry": [
@@ -74,10 +70,6 @@
               "Parameters": {
                 "FunctionName": "${GetAddressesFn}",
                 "Payload.$": "$"
-              },
-              "ResultSelector": {
-                "success.$": "$.Payload.success",
-                "data.$": "$.Payload.data"
               },
               "ResultPath": "$.domicilios",
               "End": true,
