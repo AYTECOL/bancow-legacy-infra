@@ -122,6 +122,18 @@ Resources:
             FunctionName: !Ref GetPersonFunction
         - LambdaInvokePolicy:
             FunctionName: !Ref GetAddressesFunction
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:GetLogDelivery
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:ListLogDeliveries
+                - logs:PutResourcePolicy
+                - logs:DescribeResourcePolicies
+                - logs:DescribeLogGroups
+              Resource: "*"
 
   GetPersonInvokePermission:
     Type: AWS::Lambda::Permission
