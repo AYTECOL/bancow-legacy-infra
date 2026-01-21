@@ -75,9 +75,8 @@
       "Parameters": {
         "FunctionName": "${NormalizeFn}",
         "Payload": {
-          "persona.$": "$.enriquecido[0].persona.data",
-          "domicilios.$": "$.enriquecido[1].domicilios.data",
-          "idConsultado.$": "$.enriquecido[0].Payload.validatedData.numeroIdentificacion"
+          "enriquecido.$": "$.enriquecido",
+          "correlationId.$": "$.Payload.validatedData.numeroIdentificacion"
         }
       },
       "ResultSelector": { "Payload.$": "$.Payload" },
