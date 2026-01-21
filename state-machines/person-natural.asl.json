@@ -103,7 +103,11 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
         "FunctionName": "${NormalizeFn}",
-        "Payload.$": "$"
+        "Payload": {
+          "persona.$": "$.enriquecido.persona",
+          "domicilios.$": "$.enriquecido.domicilios",
+          "validatedData.$": "$.Payload.validatedData"
+        }
       },
       "ResultPath": "$",
       "Next": "SuccessState",
