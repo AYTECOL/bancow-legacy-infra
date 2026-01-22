@@ -190,6 +190,16 @@ Resources:
                 Action:
                   - events:InvokeApiDestination
                 Resource: "*"
+        - PolicyName: InvokeHttpEndpoints
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:InvokeHTTPEndpoint
+                Resource:
+                  - https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical
+                  - https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses
 
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine
