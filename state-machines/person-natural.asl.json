@@ -174,7 +174,7 @@
                 "Authentication": {
                   "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
                 },
-                "Body.$": "$.request"
+                "RequestBody.$": "$.request"
               },
               "ResultSelector": {
                 "persona.$": "$.ResponseBody"
@@ -195,7 +195,7 @@
                 "Authentication": {
                   "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
                 },
-                "Body.$": "$.request"
+                "RequestBody.$": "$.request"
               },
               "ResultSelector": {
                 "domiciliosPersonasResponse.$": "$.ResponseBody"
