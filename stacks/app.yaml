@@ -113,7 +113,8 @@ Resources:
           /person/physical:
             post:
               security:
-                - CognitoAuthorizer: []
+                - CognitoAuthorizer:
+                    - api/read
               x-amazon-apigateway-integration:
                 timeoutInMillis: 29000
                 httpMethod: POST
@@ -123,7 +124,8 @@ Resources:
           /person/addresses:
             post:
               security:
-                - CognitoAuthorizer: []
+                - CognitoAuthorizer:
+                    - api/read
               x-amazon-apigateway-integration:
                 timeoutInMillis: 29000
                 httpMethod: POST
@@ -133,7 +135,8 @@ Resources:
           /person/natural:
             post:
               security:
-                - CognitoAuthorizer: []
+                - CognitoAuthorizer:
+                    - api/read
               x-amazon-apigateway-integration:
                 timeoutInMillis: 29000
                 type: aws
