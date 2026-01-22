@@ -46,6 +46,13 @@ jobs:
         with:
           use-installer: true
 
+      - name: Get artifact hash from S3
+        id: get-hash
+        run: |
+          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-dev/lambda/bancow-service-hash.txt - 2>/dev/null || echo "none")
+          echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
+          echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
+
       - name: Deploy to DEV
         run: |
           STACK_NAME="bancow-dev-infra"
@@ -63,7 +70,7 @@ jobs:
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
           --parameter-overrides \
-             ArtifactHash=${GITHUB_SHA} \
+             ArtifactHash=${{ steps.get-hash.outputs.hash }} \
              $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
 
   deploy-uat:
@@ -87,6 +94,13 @@ jobs:
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
 
+      - name: Get artifact hash from S3
+        id: get-hash
+        run: |
+          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-uat/lambda/bancow-service-hash.txt - 2>/dev/null || echo "none")
+          echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
+          echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
+
       - name: Deploy to UAT
         run: |
           jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json > params_uat.txt
@@ -97,7 +111,7 @@ jobs:
           --no-confirm-changeset \
           --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides $(cat params_uat.txt)
+          --parameter-overrides ArtifactHash=${{ steps.get-hash.outputs.hash }} $(cat params_uat.txt)
 
   deploy-prod:
     name: Deploy to PROD
@@ -120,6 +134,13 @@ jobs:
       - name: Setup SAM CLI
         uses: aws-actions/setup-sam@v2
 
+      - name: Get artifact hash from S3
+        id: get-hash
+        run: |
+          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-prod/lambda/bancow-service-hash.txt - 2>/dev/null || echo "none")
+          echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
+          echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
+
       - name: Deploy to PROD
         run: |
           jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/prod/parameters.json > params_prod.txt         
@@ -130,7 +151,7 @@ jobs:
           --no-confirm-changeset \
           --no-fail-on-empty-changeset \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
-          --parameter-overrides $(cat params_prod.txt)
+          --parameter-overrides ArtifactHash=${{ steps.get-hash.outputs.hash }} $(cat params_prod.txt)
   notify:
     name: Notify deployment status
     needs: [ deploy-dev, deploy-uat, deploy-prod ]
