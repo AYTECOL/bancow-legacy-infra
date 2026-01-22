@@ -160,8 +160,6 @@ Resources:
                 responses:
                   default:
                     statusCode: '200'
-                    responseParameters:
-                      method.response.header.Content-Type: "'application/json'"
                     responseTemplates:
                       application/json: |
                         #set($body = $util.parseJson($input.body))
