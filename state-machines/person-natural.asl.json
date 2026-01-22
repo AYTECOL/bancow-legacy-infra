@@ -215,7 +215,7 @@
         "domiciliosPersonasResponse": {
           "domicilioPersona": []
         },
-        "personaFisicaResponse.$": "$.result.personaFisicaResponse",
+        "personaFisicaResponse.$": "$.result.personaFisicaResponse"
       },
       "Next": "HttpResponse"
     },
@@ -239,10 +239,6 @@
       "Type": "Fail",
       "Error": "ProcessingError",
       "Cause": "Unexpected error during processing"
-    },
-
-    "Success": {
-      "Type": "Succeed"
     }
   }
 }
