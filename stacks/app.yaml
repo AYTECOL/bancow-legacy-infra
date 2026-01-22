@@ -158,13 +158,24 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
-                        #set($inputRoot = $input.path('$'))
-                        #set($output = $util.parseJson($inputRoot.output))
-                        #set($domiciliosResp = $output.domiciliosPersonasResponse)
-                        #if($domiciliosResp.containsKey("listDomicilios"))
-                          #set($domicilios = $domiciliosResp.listDomicilios.domicilio)
+                        ## StartSyncExecution devuelve un JSON con un campo `output` que contiene un string JSON.
+                        ## Parseamos primero el body y luego el campo output.
+                        #set($root = $util.parseJson($input.body))
+                        #set($outputStr = $root.output)
+                        #if($outputStr && $outputStr != "")
+                          #set($output = $util.parseJson($outputStr))
                         #else
-                          #set($domicilios = $domiciliosResp.domicilioPersona)
+                          #set($output = $root)
+                        #end
+
+                        #set($domicilios = [])
+                        #if($output.domiciliosPersonasResponse)
+                          #set($domiciliosResp = $output.domiciliosPersonasResponse)
+                          #if($domiciliosResp.listDomicilios && $domiciliosResp.listDomicilios.domicilio)
+                            #set($domicilios = $domiciliosResp.listDomicilios.domicilio)
+                          #elseif($domiciliosResp.domicilioPersona)
+                            #set($domicilios = $domiciliosResp.domicilioPersona)
+                          #end
                         #end
                         {
                           "domiciliosPersonasResponse": {
