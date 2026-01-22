@@ -112,6 +112,7 @@ Resources:
       Name: !Sub 'bancow-${Environment}-api'
       StageName: !Ref Environment
       EndpointConfiguration: REGIONAL
+      AlwaysDeploy: true
       DefinitionBody:
         openapi: '3.0.1'
         info:
@@ -152,6 +153,9 @@ Resources:
                     application/json:
                       schema:
                         type: object
+                    application/x-amz-json-1.0:
+                      schema:
+                        type: object
                     text/plain:
                       schema:
                         type: string
@@ -173,39 +177,30 @@ Resources:
                     responseTemplates:
                       application/json: |
                         #set($body = $util.parseJson($input.body))
+                        
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                          #set($out = $util.parseJson($body.output))
-                          #if($out)
-                            $util.toJson($out)
-                          #else
-                            $util.toJson({"status":$body.status,"output":$body.output})
-                          #end
+                        #set($out = $util.parseJson($body.output))
+                        $util.toJson($out)
                         #else
-                          $util.toJson($body)
+                        $util.toJson($body)
                         #end
                       text/plain: |
                         #set($body = $util.parseJson($input.body))
+                        
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                          #set($out = $util.parseJson($body.output))
-                          #if($out)
-                            $util.toJson($out)
-                          #else
-                            $util.toJson({"status":$body.status,"output":$body.output})
-                          #end
+                        #set($out = $util.parseJson($body.output))
+                        $util.toJson($out)
                         #else
-                          $util.toJson($body)
+                        $util.toJson($body)
                         #end
                       application/x-amz-json-1.0: |
                         #set($body = $util.parseJson($input.body))
+                        
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                          #set($out = $util.parseJson($body.output))
-                          #if($out)
-                            $util.toJson($out)
-                          #else
-                            $util.toJson({"status":$body.status,"output":$body.output})
-                          #end
+                        #set($out = $util.parseJson($body.output))
+                        $util.toJson($out)
                         #else
-                          $util.toJson($body)
+                        $util.toJson($body)
                         #end
               # responses are defined above (OpenAPI), integration response mapping is under x-amazon-apigateway-integration
         components:
