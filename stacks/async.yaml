@@ -68,6 +68,8 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
         SecurityGroupIds:
           - !Ref LambdaSecurityGroupId
+        LoggingConfig:
+          LogGroup: !Sub '/aws/lambda/bancow-${Environment}-person'
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
@@ -92,6 +94,8 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
         SecurityGroupIds:
           - !Ref LambdaSecurityGroupId
+      LoggingConfig:
+        LogGroup: !Sub '/aws/lambda/bancow-${Environment}-addresses'
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
