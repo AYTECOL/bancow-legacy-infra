@@ -160,11 +160,20 @@ Resources:
                       application/json: |
                         #set($inputRoot = $input.path('$'))
                         #set($output = $util.parseJson($inputRoot.output))
-                        #if($output.domiciliosPersonasResponse.listDomicilios)
-                        #set($output.domiciliosPersonasResponse.domicilioPersona = $output.domiciliosPersonasResponse.listDomicilios.domicilio)
-                        #set($temp = $output.domiciliosPersonasResponse.remove("listDomicilios"))
-                        #end
-                        $util.toJson($output)
+                        {
+                          "domiciliosPersonasResponse": {
+                            #if($output.domiciliosPersonasResponse && $output.domiciliosPersonasResponse.listDomicilios && $output.domiciliosPersonasResponse.listDomicilios.domicilio)
+                            "domicilioPersona": $util.toJson($output.domiciliosPersonasResponse.listDomicilios.domicilio)
+                            #else
+                            "domicilioPersona": ""
+                            #end
+                          },
+                          "personaFisicaResponse": $util.toJson($output.personaFisicaResponse),
+                          "informacionFatcaResponse": "$output.informacionFatcaResponse",
+                          "informacionFinancieraResponse": "$output.informacionFinancieraResponse",
+                          "informacionVictimasHechosViolentosResponse": "$output.informacionVictimasHechosViolentosResponse",
+                          "referenciasPersonasResponse": "$output.referenciasPersonasResponse"
+                        }
               responses:
                 '200':
                   description: OK
