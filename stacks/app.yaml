@@ -158,7 +158,13 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
-                        $input.body
+                        #set($inputRoot = $input.path('$'))
+                        #set($output = $util.parseJson($inputRoot.output))
+                        #if($output.domiciliosPersonasResponse.listDomicilios)
+                        #set($output.domiciliosPersonasResponse.domicilioPersona = $output.domiciliosPersonasResponse.listDomicilios.domicilio)
+                        #set($temp = $output.domiciliosPersonasResponse.remove("listDomicilios"))
+                        #end
+                        $util.toJson($output)
               responses:
                 '200':
                   description: OK
