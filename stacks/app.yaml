@@ -158,11 +158,11 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
-                        #set($root = $input.path('$'))
-                        #if($root.output)
-                          $util.toJson($util.parseJson($root.output))
+                        #set($body = $util.parseJson($input.body))
+                        #if($body.output && $body.output != "")
+                          $body.output
                         #else
-                          $util.toJson({"message":"StartSyncExecution no devolvió output"})
+                          $util.toJson({"message":"StartSyncExecution no devolvió output","raw":$body})
                         #end
               responses:
                 '200':

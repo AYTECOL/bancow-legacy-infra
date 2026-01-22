@@ -85,7 +85,7 @@
                 "Payload.$": "$.request"
               },
               "ResultSelector": {
-                "personaRaw.$": "$.Payload"
+                "persona.$": "$.Payload.persona"
               },
               "Retry": [
                 {
@@ -101,56 +101,6 @@
                   "Next": "PhysicalPersonFailed"
                 }
               ],
-              "Next": "NormalizePerson"
-            },
-            "NormalizePerson": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.personaRaw",
-                  "IsString": true,
-                  "Next": "ParsePersonJson"
-                }
-              ],
-              "Default": "PersonAsObject"
-            },
-            "ParsePersonJson": {
-              "Type": "Pass",
-              "Parameters": {
-                "personaObj.$": "States.StringToJson($.personaRaw)"
-              },
-              "Next": "ShapePerson"
-            },
-            "PersonAsObject": {
-              "Type": "Pass",
-              "Parameters": {
-                "personaObj.$": "$.personaRaw"
-              },
-              "Next": "ShapePerson"
-            },
-            "ShapePerson": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.personaObj.personaFisicaResponse",
-                  "IsPresent": true,
-                  "Next": "PersonFromWrapper"
-                }
-              ],
-              "Default": "PersonDirect"
-            },
-            "PersonFromWrapper": {
-              "Type": "Pass",
-              "Parameters": {
-                "persona.$": "$.personaObj.personaFisicaResponse"
-              },
-              "End": true
-            },
-            "PersonDirect": {
-              "Type": "Pass",
-              "Parameters": {
-                "persona.$": "$.personaObj"
-              },
               "End": true
             },
             "PhysicalPersonFailed": {
@@ -171,7 +121,7 @@
                 "Payload.$": "$.request"
               },
               "ResultSelector": {
-                "domiciliosRaw.$": "$.Payload"
+                "domiciliosPersonasResponse.$": "$.Payload.domiciliosPersonasResponse"
               },
               "Retry": [
                 {
@@ -187,89 +137,6 @@
                   "Next": "AddressesFailed"
                 }
               ],
-              "Next": "NormalizeAddresses"
-            },
-            "NormalizeAddresses": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.domiciliosRaw",
-                  "IsString": true,
-                  "Next": "ParseAddressesJson"
-                }
-              ],
-              "Default": "AddressesAsObject"
-            },
-            "ParseAddressesJson": {
-              "Type": "Pass",
-              "Parameters": {
-                "domiciliosObj.$": "States.StringToJson($.domiciliosRaw)"
-              },
-              "Next": "ShapeAddresses"
-            },
-            "AddressesAsObject": {
-              "Type": "Pass",
-              "Parameters": {
-                "domiciliosObj.$": "$.domiciliosRaw"
-              },
-              "Next": "ShapeAddresses"
-            },
-            "ShapeAddresses": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.domiciliosObj.domiciliosPersonasResponse.domicilioPersona",
-                  "IsPresent": true,
-                  "Next": "AddressesFromWrapper"
-                },
-                {
-                  "Variable": "$.domiciliosObj.listDomicilios.domicilio",
-                  "IsPresent": true,
-                  "Next": "AddressesFromListDomicilios"
-                },
-                {
-                  "Variable": "$.domiciliosObj.domicilioPersona",
-                  "IsPresent": true,
-                  "Next": "AddressesFromDomicilioPersona"
-                }
-              ],
-              "Default": "AddressesEmpty"
-            },
-            "AddressesFromWrapper": {
-              "Type": "Pass",
-              "Parameters": {
-                "domicilioPersona.$": "$.domiciliosObj.domiciliosPersonasResponse.domicilioPersona"
-              },
-              "Next": "WrapAddresses"
-            },
-            "AddressesFromListDomicilios": {
-              "Type": "Pass",
-              "Parameters": {
-                "domicilioPersona.$": "$.domiciliosObj.listDomicilios.domicilio"
-              },
-              "Next": "WrapAddresses"
-            },
-            "AddressesFromDomicilioPersona": {
-              "Type": "Pass",
-              "Parameters": {
-                "domicilioPersona.$": "$.domiciliosObj.domicilioPersona"
-              },
-              "Next": "WrapAddresses"
-            },
-            "AddressesEmpty": {
-              "Type": "Pass",
-              "Parameters": {
-                "domicilioPersona": []
-              },
-              "Next": "WrapAddresses"
-            },
-            "WrapAddresses": {
-              "Type": "Pass",
-              "Parameters": {
-                "domiciliosPersonasResponse": {
-                  "domicilioPersona.$": "$.domicilioPersona"
-                }
-              },
               "End": true
             },
             "AddressesFailed": {
@@ -287,7 +154,11 @@
       "Type": "Pass",
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.parallel[1].domiciliosPersonasResponse",
-        "personaFisicaResponse.$": "$.parallel[0].persona"
+        "personaFisicaResponse.$": "$.parallel[0].persona",
+        "informacionFatcaResponse": "",
+        "informacionFinancieraResponse": "",
+        "informacionVictimasHechosViolentosResponse": "",
+        "referenciasPersonasResponse": ""
       },
       "Next": "Success"
     },
@@ -300,7 +171,7 @@
         "Payload.$": "$.request"
       },
       "ResultSelector": {
-        "personaRaw.$": "$.Payload"
+        "personaFisicaResponse.$": "$.Payload.persona"
       },
       "ResultPath": "$.result",
       "Retry": [
@@ -317,66 +188,6 @@
           "Next": "ProcessingFailed"
         }
       ],
-      "Next": "NormalizePersonSingle"
-    },
-
-    "NormalizePersonSingle": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.result.personaRaw",
-          "IsString": true,
-          "Next": "ParsePersonJsonSingle"
-        }
-      ],
-      "Default": "PersonAsObjectSingle"
-    },
-
-    "ParsePersonJsonSingle": {
-      "Type": "Pass",
-      "Parameters": {
-        "personaObj.$": "States.StringToJson($.result.personaRaw)"
-      },
-      "ResultPath": "$.result",
-      "Next": "ShapePersonSingle"
-    },
-
-    "PersonAsObjectSingle": {
-      "Type": "Pass",
-      "Parameters": {
-        "personaObj.$": "$.result.personaRaw"
-      },
-      "ResultPath": "$.result",
-      "Next": "ShapePersonSingle"
-    },
-
-    "ShapePersonSingle": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.result.personaObj.personaFisicaResponse",
-          "IsPresent": true,
-          "Next": "PersonFromWrapperSingle"
-        }
-      ],
-      "Default": "PersonDirectSingle"
-    },
-
-    "PersonFromWrapperSingle": {
-      "Type": "Pass",
-      "Parameters": {
-        "persona.$": "$.result.personaObj.personaFisicaResponse"
-      },
-      "ResultPath": "$.result",
-      "Next": "PrepareSingleResult"
-    },
-
-    "PersonDirectSingle": {
-      "Type": "Pass",
-      "Parameters": {
-        "persona.$": "$.result.personaObj"
-      },
-      "ResultPath": "$.result",
       "Next": "PrepareSingleResult"
     },
 
@@ -386,7 +197,11 @@
         "domiciliosPersonasResponse": {
           "domicilioPersona": []
         },
-        "personaFisicaResponse.$": "$.result.persona"
+        "personaFisicaResponse.$": "$.result.personaFisicaResponse",
+        "informacionFatcaResponse": "",
+        "informacionFinancieraResponse": "",
+        "informacionVictimasHechosViolentosResponse": "",
+        "referenciasPersonasResponse": ""
       },
       "Next": "Success"
     },
