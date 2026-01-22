@@ -158,25 +158,11 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
-                        #set($inputRoot = $input.path('$'))
-                        #set($output = $util.parseJson($inputRoot.output))
+                        #set($root = $input.path('$'))
                         {
-                          "domiciliosPersonasResponse": {
-                            #if($output.domiciliosPersonasResponse && $output.domiciliosPersonasResponse.listDomicilios && $output.domiciliosPersonasResponse.listDomicilios.domicilio)
-                            "domicilioPersona": $util.toJson($output.domiciliosPersonasResponse.listDomicilios.domicilio)
-                            #else
-                            "domicilioPersona": []
-                            #end
-                          },
-                          #if($output.personaFisicaResponse)
-                          "personaFisicaResponse": $util.toJson($output.personaFisicaResponse),
-                          #else
-                          "personaFisicaResponse": {},
-                          #end
-                          "informacionFatcaResponse": "$!output.informacionFatcaResponse",
-                          "informacionFinancieraResponse": "$!output.informacionFinancieraResponse",
-                          "informacionVictimasHechosViolentosResponse": "$!output.informacionVictimasHechosViolentosResponse",
-                          "referenciasPersonasResponse": "$!output.referenciasPersonasResponse"
+                          "hasOutput": $util.toJson($root.containsKey('output')),
+                          "rawOutputType": "$root.output.getClass()",
+                          "rawOutputSample": "$!root.output"
                         }
               responses:
                 '200':
