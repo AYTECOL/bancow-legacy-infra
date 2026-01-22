@@ -172,7 +172,9 @@ cd infra
 sam deploy \
   --template-file stacks/root.yaml \
   --config-env dev \
-  --parameter-overrides $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+  --parameter-overrides \
+    ArtifactHash=<YOUR_ARTIFACT_HASH> \
+    $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
 ```
 
 #### 3. Deploy to UAT (Manual Approval)
@@ -182,7 +184,9 @@ cd infra
 sam deploy \
   --template-file stacks/root.yaml \
   --config-env uat \
-  --parameter-overrides $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+  --parameter-overrides \
+    ArtifactHash=<YOUR_ARTIFACT_HASH> \
+    $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
 ```
 
 **Note**: Requires manual confirmation of changeset
@@ -194,7 +198,9 @@ cd infra
 sam deploy \
   --template-file stacks/root.yaml \
   --config-env prod \
-  --parameter-overrides $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")')
+  --parameter-overrides \
+    ArtifactHash=<YOUR_ARTIFACT_HASH> \
+    $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
 ```
 
 **Note**: Review changeset carefully before approving
@@ -211,10 +217,10 @@ sam deploy --template-file stacks/security.yaml --stack-name bancow-dev-security
 sam deploy --template-file stacks/data.yaml --stack-name bancow-dev-data --parameter-overrides Environment=dev
 
 # 3. App Stack (requires outputs from previous stacks)
-sam deploy --template-file stacks/app.yaml --stack-name bancow-dev-app --parameter-overrides file://environments/dev/parameters.json
+sam deploy --template-file stacks/app.yaml --stack-name bancow-dev-app --parameter-overrides ArtifactHash=<YOUR_ARTIFACT_HASH> $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
 
 # Or deploy all at once via root
-sam deploy --template-file stacks/root.yaml --stack-name bancow-dev-infra --parameter-overrides file://environments/dev/parameters.json
+sam deploy --template-file stacks/root.yaml --stack-name bancow-dev-infra --parameter-overrides ArtifactHash=<YOUR_ARTIFACT_HASH> $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
 ```
 
 ---
@@ -229,7 +235,7 @@ To update only one stack (e.g., app stack):
 sam deploy \
   --template-file stacks/app.yaml \
   --stack-name bancow-dev-app \
-  --parameter-overrides file://environments/dev/parameters.json
+  --parameter-overrides ArtifactHash=<YOUR_ARTIFACT_HASH> $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
 ```
 
 ### Promoting Between Environments

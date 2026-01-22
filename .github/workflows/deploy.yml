@@ -57,6 +57,7 @@ jobs:
         run: |
           STACK_NAME="bancow-dev-infra"
           DEPLOY_BUCKET="bancow-dev-sam-deployment"
+          PARAMS=$(jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
           
           sam build --template-file stacks/root.yaml
           
@@ -71,7 +72,7 @@ jobs:
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
           --parameter-overrides \
              ArtifactHash=${{ steps.get-hash.outputs.hash }} \
-             $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
+             $PARAMS
 
   deploy-uat:
     name: Deploy to UAT
@@ -103,7 +104,7 @@ jobs:
 
       - name: Deploy to UAT
         run: |
-          jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json > params_uat.txt
+          jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json > params_uat.txt
           sam deploy \
           --config-file samconfig.toml \
           --config-env uat \
@@ -143,7 +144,7 @@ jobs:
 
       - name: Deploy to PROD
         run: |
-          jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/prod/parameters.json > params_prod.txt         
+          jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")' environments/prod/parameters.json > params_prod.txt         
           sam deploy \
           --config-file samconfig.toml \
           --config-env prod \

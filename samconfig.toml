@@ -74,6 +74,6 @@ lint = true
 # - prod: manual approval + change set review (confirm_changeset = true)
 # 
 # Usage:
-#   sam deploy --config-env dev --parameter-overrides file://environments/dev/parameters.json
-#   sam deploy --config-env uat --parameter-overrides file://environments/uat/parameters.json
-#   sam deploy --config-env prod --parameter-overrides file://environments/prod/parameters.json
+#   sam deploy --config-env dev --parameter-overrides ArtifactHash=<YOUR_ARTIFACT_HASH> $(cat environments/dev/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
+#   sam deploy --config-env uat --parameter-overrides ArtifactHash=<YOUR_ARTIFACT_HASH> $(cat environments/uat/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
+#   sam deploy --config-env prod --parameter-overrides ArtifactHash=<YOUR_ARTIFACT_HASH> $(cat environments/prod/parameters.json | jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")')
