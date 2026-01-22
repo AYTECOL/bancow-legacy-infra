@@ -157,10 +157,11 @@
               "Type": "Pass",
               "Parameters": {
                 "persona": {
+                  "message.$": "States.StringToJson($.busError.Cause).errorMessage",
                   "error": {
-                    "source": "Lambda",
-                    "errorType.$": "$.busError.Error",
-                    "cause.$": "$.busError.Cause"
+                    "type.$": "States.StringToJson($.busError.Cause).errorType",
+                    "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+                    "metadata": {}
                   }
                 }
               },
@@ -212,10 +213,11 @@
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse": {
+                  "message.$": "States.StringToJson($.busError.Cause).errorMessage",
                   "error": {
-                    "source": "Lambda",
-                    "errorType.$": "$.busError.Error",
-                    "cause.$": "$.busError.Cause"
+                    "type.$": "States.StringToJson($.busError.Cause).errorType",
+                    "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+                    "metadata": {}
                   }
                 }
               },
@@ -431,10 +433,11 @@
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
         "personaFisicaResponse": {
+          "message.$": "States.StringToJson($.busError.Cause).errorMessage",
           "error": {
-            "source": "Lambda",
-            "errorType.$": "$.busError.Error",
-            "cause.$": "$.busError.Cause"
+            "type.$": "States.StringToJson($.busError.Cause).errorType",
+            "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+            "metadata": {}
           }
         }
       },
