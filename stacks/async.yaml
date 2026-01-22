@@ -199,6 +199,17 @@ Resources:
                   - states:InvokeHTTPEndpoint
                 Resource: "*"
 
+        - PolicyName: EventBridgeConnectionSecrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - arn:aws:secretsmanager:us-east-1:334333507387:secret:events!connection/bancow-apigw-connection/*
+
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine
     DependsOn: SfnLogGroup
