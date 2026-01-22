@@ -81,7 +81,7 @@
         {
           "Variable": "$.request.consultarDomiciliosPersonas",
           "IsPresent": true,
-          "Next": "ValidateExecutionMode"
+          "Next": "InitOptionalOutputs"
         }
       ],
       "Default": "ValidationFailed"
