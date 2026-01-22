@@ -158,31 +158,12 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
-                        ## StartSyncExecution devuelve un JSON con un campo `output` que contiene un string JSON.
-                        ## Parseamos primero el body y luego el campo output.
-                        #set($root = $util.parseJson($input.body))
-                        #set($outputStr = $root.output)
-                        #if($outputStr && $outputStr != "")
-                          #set($output = $util.parseJson($outputStr))
+                        #set($root = $input.path('$'))
+                        #if($root.output)
+                          $util.parseJson($root.output)
                         #else
-                          #set($output = $root)
+                          {"message":"StartSyncExecution no devolvió output"}
                         #end
-
-                        #set($domicilios = [])
-                        #if($output.domiciliosPersonasResponse)
-                          #set($domiciliosResp = $output.domiciliosPersonasResponse)
-                          #if($domiciliosResp.listDomicilios && $domiciliosResp.listDomicilios.domicilio)
-                            #set($domicilios = $domiciliosResp.listDomicilios.domicilio)
-                          #elseif($domiciliosResp.domicilioPersona)
-                            #set($domicilios = $domiciliosResp.domicilioPersona)
-                          #end
-                        #end
-                        {
-                          "domiciliosPersonasResponse": {
-                            "domicilioPersona": $util.toJson($domicilios)
-                          },
-                          "personaFisicaResponse": $util.toJson($output.personaFisicaResponse)
-                        }
               responses:
                 '200':
                   description: OK
