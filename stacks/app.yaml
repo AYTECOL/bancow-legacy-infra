@@ -152,6 +152,9 @@ Resources:
                     application/json:
                       schema:
                         type: object
+                    text/plain:
+                      schema:
+                        type: string
               x-amazon-apigateway-integration:
                 timeoutInMillis: 29000
                 type: aws
@@ -169,6 +172,18 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
+                        #set($body = $util.parseJson($input.body))
+                        #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
+                          #set($out = $util.parseJson($body.output))
+                          #if($out)
+                            $util.toJson($out)
+                          #else
+                            $util.toJson({"status":$body.status,"output":$body.output})
+                          #end
+                        #else
+                          $util.toJson($body)
+                        #end
+                      text/plain: |
                         #set($body = $util.parseJson($input.body))
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
                           #set($out = $util.parseJson($body.output))
