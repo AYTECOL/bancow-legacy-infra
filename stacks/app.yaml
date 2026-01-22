@@ -175,12 +175,11 @@ Resources:
                   default:
                     statusCode: '200'
                     responseTemplates:
-                      application/json: |
+                      application/json: |                        
                         #set($body = $util.parseJson($input.body))
                         
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                        #set($out = $util.parseJson($body.output))
-                        $util.toJson($out)
+                        $util.toJson($util.parseJson($body.output))
                         #else
                         $util.toJson($body)
                         #end
@@ -188,8 +187,7 @@ Resources:
                         #set($body = $util.parseJson($input.body))
                         
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                        #set($out = $util.parseJson($body.output))
-                        $util.toJson($out)
+                        $util.toJson($util.parseJson($body.output))
                         #else
                         $util.toJson($body)
                         #end
@@ -197,8 +195,7 @@ Resources:
                         #set($body = $util.parseJson($input.body))
                         
                         #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                        #set($out = $util.parseJson($body.output))
-                        $util.toJson($out)
+                        $util.toJson($util.parseJson($body.output))
                         #else
                         $util.toJson($body)
                         #end
