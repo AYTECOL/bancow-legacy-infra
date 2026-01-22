@@ -129,12 +129,8 @@
     "MergeParallelResults": {
       "Type": "Pass",
       "Parameters": {
-        "personaFisicaResponse.$": "$.parallel[0].persona",
         "domiciliosPersonasResponse.$": "$.parallel[1].domicilios",
-        "informacionFatcaResponse": "",
-        "informacionFinancieraResponse": "",
-        "informacionVictimasHechosViolentosResponse": "",
-        "referenciasPersonasResponse": ""
+        "personaFisicaResponse.$": "$.parallel[0].persona"
       },
       "Next": "Success"
     },
@@ -170,14 +166,9 @@
     "PrepareSingleResult": {
       "Type": "Pass",
       "Parameters": {
-        "personaFisicaResponse.$": "$.result.persona",
         "domiciliosPersonasResponse": {
           "domicilioPersona": []
-        },
-        "informacionFatcaResponse": "",
-        "informacionFinancieraResponse": "",
-        "informacionVictimasHechosViolentosResponse": "",
-        "referenciasPersonasResponse": ""
+        }
       },
       "Next": "Success"
     },
