@@ -160,7 +160,7 @@ Resources:
                       application/json: |
                         #set($body = $util.parseJson($input.body))
                         #if($body.output && $body.output != "")
-                          $body.output
+                          $util.toJson($util.parseJson($body.output))
                         #else
                           $util.toJson({"message":"StartSyncExecution no devolvió output","raw":$body})
                         #end

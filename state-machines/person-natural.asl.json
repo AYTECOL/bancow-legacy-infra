@@ -85,7 +85,7 @@
                 "Payload.$": "$.request"
               },
               "ResultSelector": {
-                "persona.$": "$.Payload.persona"
+                "persona.$": "$.Payload"
               },
               "Retry": [
                 {
@@ -121,7 +121,9 @@
                 "Payload.$": "$.request"
               },
               "ResultSelector": {
-                "domiciliosPersonasResponse.$": "$.Payload.domiciliosPersonasResponse"
+                "domiciliosPersonasResponse": {
+                  "domicilioPersona.$": "$.Payload.listDomicilios.domicilio"
+                }
               },
               "Retry": [
                 {
@@ -171,7 +173,7 @@
         "Payload.$": "$.request"
       },
       "ResultSelector": {
-        "personaFisicaResponse.$": "$.Payload.persona"
+        "personaFisicaResponse.$": "$.Payload"
       },
       "ResultPath": "$.result",
       "Retry": [
