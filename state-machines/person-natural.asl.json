@@ -30,6 +30,15 @@
       "Next": "ValidateMinimalInput"
     },
 
+    "InitOptionalOutputs": {
+      "Type": "Pass",
+      "Parameters": {
+        "request.$": "$.request",
+        "domiciliosPersonasResponse": ""
+      },
+      "Next": "ValidateExecutionMode"
+    },
+
     "ValidateMinimalInput": {
       "Type": "Choice",
       "Choices": [
