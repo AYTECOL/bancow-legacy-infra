@@ -174,7 +174,13 @@
                 "Authentication": {
                   "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
                 },
-                "RequestBody.$": "$"
+                "RequestBody": {
+                  "executionMode.$": "$.request.executionMode",
+                  "numeroIdentificacion.$": "$.request.numeroIdentificacion",
+                  "tipoIdentificacion.$": "$.request.tipoIdentificacion",
+                  "pais.$": "$.request.pais",
+                  "parametrosAdicionales.$": "$.request.parametrosAdicionales"
+                }
               },
               "ResultSelector": {
                 "persona.$": "$.ResponseBody"
@@ -195,7 +201,12 @@
                 "Authentication": {
                   "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
                 },
-                "RequestBody.$": "$"
+                "RequestBody": {
+                  "executionMode.$": "$.request.executionMode",
+                  "numeroIdentificacion.$": "$.request.numeroIdentificacion",
+                  "pais.$": "$.request.pais",
+                  "tipoIdentificacion.$": "$.request.tipoIdentificacion"
+                }
               },
               "ResultSelector": {
                 "domiciliosPersonasResponse.$": "$.ResponseBody"
@@ -239,7 +250,13 @@
         "Authentication": {
           "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
         },
-        "RequestBody.$": "$"
+        "RequestBody": {
+          "executionMode.$": "$.request.executionMode",
+          "numeroIdentificacion.$": "$.request.numeroIdentificacion",
+          "tipoIdentificacion.$": "$.request.tipoIdentificacion",
+          "pais.$": "$.request.pais",
+          "parametrosAdicionales.$": "$.request.parametrosAdicionales"
+        }
       },
       "ResultSelector": {
         "personaFisicaResponse.$": "$.ResponseBody"
