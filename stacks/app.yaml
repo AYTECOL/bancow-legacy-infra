@@ -165,14 +165,18 @@ Resources:
                             #if($output.domiciliosPersonasResponse && $output.domiciliosPersonasResponse.listDomicilios && $output.domiciliosPersonasResponse.listDomicilios.domicilio)
                             "domicilioPersona": $util.toJson($output.domiciliosPersonasResponse.listDomicilios.domicilio)
                             #else
-                            "domicilioPersona": ""
+                            "domicilioPersona": []
                             #end
                           },
+                          #if($output.personaFisicaResponse)
                           "personaFisicaResponse": $util.toJson($output.personaFisicaResponse),
-                          "informacionFatcaResponse": "$output.informacionFatcaResponse",
-                          "informacionFinancieraResponse": "$output.informacionFinancieraResponse",
-                          "informacionVictimasHechosViolentosResponse": "$output.informacionVictimasHechosViolentosResponse",
-                          "referenciasPersonasResponse": "$output.referenciasPersonasResponse"
+                          #else
+                          "personaFisicaResponse": {},
+                          #end
+                          "informacionFatcaResponse": "$!output.informacionFatcaResponse",
+                          "informacionFinancieraResponse": "$!output.informacionFinancieraResponse",
+                          "informacionVictimasHechosViolentosResponse": "$!output.informacionVictimasHechosViolentosResponse",
+                          "referenciasPersonasResponse": "$!output.referenciasPersonasResponse"
                         }
               responses:
                 '200':
