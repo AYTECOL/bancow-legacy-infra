@@ -176,13 +176,9 @@
       "Type": "Pass",
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.parallel[1].domiciliosPersonasResponse",
-        "personaFisicaResponse.$": "$.parallel[0].persona",
-        "informacionFatcaResponse": "",
-        "informacionFinancieraResponse": "",
-        "informacionVictimasHechosViolentosResponse": "",
-        "referenciasPersonasResponse": ""
+        "personaFisicaResponse.$": "$.parallel[0].persona"
       },
-      "Next": "Success"
+      "Next": "HttpResponse"
     },
 
     "OnlyPerson": {
@@ -220,12 +216,17 @@
           "domicilioPersona": []
         },
         "personaFisicaResponse.$": "$.result.personaFisicaResponse",
-        "informacionFatcaResponse": "",
-        "informacionFinancieraResponse": "",
-        "informacionVictimasHechosViolentosResponse": "",
-        "referenciasPersonasResponse": ""
       },
-      "Next": "Success"
+      "Next": "HttpResponse"
+    },
+
+    "HttpResponse": {
+      "Type": "Pass",
+      "Parameters": {
+        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+        "personaFisicaResponse.$": "$.personaFisicaResponse"
+      },
+      "End": true
     },
 
     "ValidationFailed": {
