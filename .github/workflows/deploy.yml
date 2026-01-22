@@ -49,9 +49,29 @@ jobs:
       - name: Get artifact hash from S3
         id: get-hash
         run: |
-          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-dev/lambda/bancow-service-hash.txt - 2>/dev/null || echo "none")
+          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-dev/lambda/bancow-service-hash.txt - 2>/dev/null || true)
+          ARTIFACT_HASH=$(echo "$ARTIFACT_HASH" | tr -d '\r\n' | xargs)
+          if [[ -z "$ARTIFACT_HASH" || "$ARTIFACT_HASH" == "none" ]]; then
+            echo "❌ No se pudo leer un ArtifactHash válido desde s3://bancow-artifacts-dev/lambda/bancow-service-hash.txt"
+            exit 1
+          fi
           echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
           echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
+
+      - name: Ensure hash-based Lambda artifact exists (DEV)
+        run: |
+          BUCKET="bancow-artifacts-dev"
+          STABLE_KEY="lambda/bancow-service.zip"
+          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+
+          echo "🔎 Validando artifact por hash: s3://$BUCKET/$HASH_KEY"
+          if aws s3api head-object --bucket "$BUCKET" --key "$HASH_KEY" >/dev/null 2>&1; then
+            echo "✅ Ya existe el artifact por hash."
+          else
+            echo "ℹ️ No existe el artifact por hash. Copiando desde el key estable: s3://$BUCKET/$STABLE_KEY"
+            aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
+            echo "✅ Artifact copiado a key por hash."
+          fi
 
       - name: Deploy to DEV
         run: |
@@ -98,9 +118,29 @@ jobs:
       - name: Get artifact hash from S3
         id: get-hash
         run: |
-          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-uat/lambda/bancow-service-hash.txt - 2>/dev/null || echo "none")
+          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-uat/lambda/bancow-service-hash.txt - 2>/dev/null || true)
+          ARTIFACT_HASH=$(echo "$ARTIFACT_HASH" | tr -d '\r\n' | xargs)
+          if [[ -z "$ARTIFACT_HASH" || "$ARTIFACT_HASH" == "none" ]]; then
+            echo "❌ No se pudo leer un ArtifactHash válido desde s3://bancow-artifacts-uat/lambda/bancow-service-hash.txt"
+            exit 1
+          fi
           echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
           echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
+
+      - name: Ensure hash-based Lambda artifact exists (UAT)
+        run: |
+          BUCKET="bancow-artifacts-uat"
+          STABLE_KEY="lambda/bancow-service.zip"
+          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+
+          echo "🔎 Validando artifact por hash: s3://$BUCKET/$HASH_KEY"
+          if aws s3api head-object --bucket "$BUCKET" --key "$HASH_KEY" >/dev/null 2>&1; then
+            echo "✅ Ya existe el artifact por hash."
+          else
+            echo "ℹ️ No existe el artifact por hash. Copiando desde el key estable: s3://$BUCKET/$STABLE_KEY"
+            aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
+            echo "✅ Artifact copiado a key por hash."
+          fi
 
       - name: Deploy to UAT
         run: |
@@ -138,9 +178,29 @@ jobs:
       - name: Get artifact hash from S3
         id: get-hash
         run: |
-          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-prod/lambda/bancow-service-hash.txt - 2>/dev/null || echo "none")
+          ARTIFACT_HASH=$(aws s3 cp s3://bancow-artifacts-prod/lambda/bancow-service-hash.txt - 2>/dev/null || true)
+          ARTIFACT_HASH=$(echo "$ARTIFACT_HASH" | tr -d '\r\n' | xargs)
+          if [[ -z "$ARTIFACT_HASH" || "$ARTIFACT_HASH" == "none" ]]; then
+            echo "❌ No se pudo leer un ArtifactHash válido desde s3://bancow-artifacts-prod/lambda/bancow-service-hash.txt"
+            exit 1
+          fi
           echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
           echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
+
+      - name: Ensure hash-based Lambda artifact exists (PROD)
+        run: |
+          BUCKET="bancow-artifacts-prod"
+          STABLE_KEY="lambda/bancow-service.zip"
+          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+
+          echo "🔎 Validando artifact por hash: s3://$BUCKET/$HASH_KEY"
+          if aws s3api head-object --bucket "$BUCKET" --key "$HASH_KEY" >/dev/null 2>&1; then
+            echo "✅ Ya existe el artifact por hash."
+          else
+            echo "ℹ️ No existe el artifact por hash. Copiando desde el key estable: s3://$BUCKET/$STABLE_KEY"
+            aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
+            echo "✅ Artifact copiado a key por hash."
+          fi
 
       - name: Deploy to PROD
         run: |
