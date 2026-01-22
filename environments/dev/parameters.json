@@ -5,9 +5,10 @@
     "PrivateSubnetIds": "subnet-0851f332320188cb3,subnet-00164843a85430f26",
     "LambdaSecurityGroupId": "sg-0560abb16110cb333",
     "LambdaArtifactBucket": "bancow-artifacts-dev",
-    "LambdaArtifactKey": "lambda/bancow-service.zip",
+    "LambdaArtifactKey": "",
     "ArtifactBucket": "bancow-artifacts-dev",
-    "ArtifactKey": "lambda-v2/bancow-service-v2.zip",
+    "ArtifactKey": "",
+    "ArtifactHash": "REPLACE_ME",
     "LogLevel": "DEBUG"
   },
   "Tags": {

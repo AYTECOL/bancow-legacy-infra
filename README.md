@@ -237,10 +237,10 @@ sam deploy \
 The typical flow: **dev → uat → prod**
 
 1. Deploy and test in **dev**
-2. Update artifact version in `environments/uat/parameters.json`
+2. Update `ArtifactHash` in `environments/uat/parameters.json` (or pass it via `--parameter-overrides` in your pipeline)
 3. Deploy to **uat** with manual approval
 4. Validate in **uat**
-5. Update artifact version in `environments/prod/parameters.json`
+5. Update `ArtifactHash` in `environments/prod/parameters.json` (or pass it via `--parameter-overrides` in your pipeline)
 6. Deploy to **prod** with manual approval and changeset review
 
 ---
@@ -296,8 +296,13 @@ All environments require:
 - `PrivateSubnetIds` (comma-separated subnet IDs)
 - `LambdaSecurityGroupId` (security group for Lambda)
 - `LambdaArtifactBucket` (S3 bucket with artifacts)
-- `LambdaArtifactKey` (S3 key to artifact)
+- `ArtifactBucket` (S3 bucket with async/step-functions Lambdas artifacts)
+- `ArtifactHash` (unique value per build/release; used to reference a new S3 key and force Lambda code update)
 - `LogLevel` (DEBUG, INFO, WARN, ERROR)
+
+Optional (can be empty to use the hash-based key pattern):
+- `LambdaArtifactKey` (explicit S3 key for app Lambda artifact)
+- `ArtifactKey` (explicit S3 key for async Lambdas artifact)
 
 ---
 
@@ -340,7 +345,8 @@ All environments require:
 ### Lambda Deployment Issues
 
 1. Verify artifact bucket and key in parameters
-2. Check S3 versioning is enabled
+2. If you are NOT using S3 versioning, ensure your pipeline uploads to a **new key per release**.
+   - This repo supports `lambda/bancow-service-${ArtifactHash}.zip` via `ArtifactHash`.
 3. Ensure IAM role has permissions
 4. Validate VPC and subnet configuration
 

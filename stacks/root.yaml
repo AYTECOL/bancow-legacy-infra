@@ -30,7 +30,8 @@ Parameters:
 
   LambdaArtifactKey:
     Type: String
-    Description: S3 key for Lambda deployment package
+    Default: ''
+    Description: Optional explicit S3 key for Lambda deployment package. If empty, a hash-based key is used in child stacks.
 
   # V2 (Async) parameters
   ArtifactBucket:
@@ -39,7 +40,8 @@ Parameters:
 
   ArtifactKey:
     Type: String
-    Description: S3 key for v2 Lambda deployment package (e.g., v2/dev/latest/bancow-v2-lambda.zip)
+    Default: ''
+    Description: Optional explicit S3 key for v2 Lambda deployment package. If empty, a hash-based key is used in child stacks.
 
   LogLevel:
     Type: String
@@ -97,8 +99,8 @@ Resources:
         LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
         LambdaExecutionRoleArn: !GetAtt SecurityStack.Outputs.LambdaExecutionRoleArn
         SoapCredentialsArn: !GetAtt DataStack.Outputs.SoapCredentialsArn
-        ArtifactBucket: !Ref LambdaArtifactBucket
-        ArtifactKey: !Ref LambdaArtifactKey
+        ArtifactBucket: !Ref ArtifactBucket
+        ArtifactKey: !Ref ArtifactKey
         LogLevel: !Ref LogLevel
       Tags:
         - Key: Environment
