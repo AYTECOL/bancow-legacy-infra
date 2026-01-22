@@ -300,7 +300,7 @@
         "Payload.$": "$.request"
       },
       "ResultSelector": {
-        "persona.$": "$.Payload"
+        "personaRaw.$": "$.Payload"
       },
       "ResultPath": "$.result",
       "Retry": [
@@ -317,6 +317,66 @@
           "Next": "ProcessingFailed"
         }
       ],
+      "Next": "NormalizePersonSingle"
+    },
+
+    "NormalizePersonSingle": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.result.personaRaw",
+          "IsString": true,
+          "Next": "ParsePersonJsonSingle"
+        }
+      ],
+      "Default": "PersonAsObjectSingle"
+    },
+
+    "ParsePersonJsonSingle": {
+      "Type": "Pass",
+      "Parameters": {
+        "personaObj.$": "States.StringToJson($.result.personaRaw)"
+      },
+      "ResultPath": "$.result",
+      "Next": "ShapePersonSingle"
+    },
+
+    "PersonAsObjectSingle": {
+      "Type": "Pass",
+      "Parameters": {
+        "personaObj.$": "$.result.personaRaw"
+      },
+      "ResultPath": "$.result",
+      "Next": "ShapePersonSingle"
+    },
+
+    "ShapePersonSingle": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.result.personaObj.personaFisicaResponse",
+          "IsPresent": true,
+          "Next": "PersonFromWrapperSingle"
+        }
+      ],
+      "Default": "PersonDirectSingle"
+    },
+
+    "PersonFromWrapperSingle": {
+      "Type": "Pass",
+      "Parameters": {
+        "persona.$": "$.result.personaObj.personaFisicaResponse"
+      },
+      "ResultPath": "$.result",
+      "Next": "PrepareSingleResult"
+    },
+
+    "PersonDirectSingle": {
+      "Type": "Pass",
+      "Parameters": {
+        "persona.$": "$.result.personaObj"
+      },
+      "ResultPath": "$.result",
       "Next": "PrepareSingleResult"
     },
 

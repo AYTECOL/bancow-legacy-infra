@@ -160,9 +160,9 @@ Resources:
                       application/json: |
                         #set($root = $input.path('$'))
                         #if($root.output)
-                          $util.parseJson($root.output)
+                          $util.toJson($util.parseJson($root.output))
                         #else
-                          {"message":"StartSyncExecution no devolvió output"}
+                          $util.toJson({"message":"StartSyncExecution no devolvió output"})
                         #end
               responses:
                 '200':
