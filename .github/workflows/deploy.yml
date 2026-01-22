@@ -58,32 +58,17 @@ jobs:
           echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
           echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
 
-      - name: Ensure hash-based Lambda artifact exists (DEV)
-        run: |
-          BUCKET="bancow-artifacts-dev"
-          STABLE_KEY="lambda/bancow-service.zip"
-          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
-
-          echo "🔎 Validando artifact por hash: s3://$BUCKET/$HASH_KEY"
-          if aws s3api head-object --bucket "$BUCKET" --key "$HASH_KEY" >/dev/null 2>&1; then
-            echo "✅ Ya existe el artifact por hash."
-          else
-            echo "ℹ️ No existe el artifact por hash. Copiando desde el key estable: s3://$BUCKET/$STABLE_KEY"
-            aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
-            echo "✅ Artifact copiado a key por hash."
-          fi
-
       - name: Validate Lambda artifact handlers (DEV)
         run: |
           BUCKET="bancow-artifacts-dev"
-          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+          KEY="lambda/bancow-service.zip"
 
           WORKDIR="/tmp/bancow_lambda_artifact"
           rm -rf "$WORKDIR"
           mkdir -p "$WORKDIR/unzipped"
 
-          echo "⬇️ Descargando s3://$BUCKET/$HASH_KEY"
-          aws s3 cp "s3://$BUCKET/$HASH_KEY" "$WORKDIR/lambda.zip"
+          echo "⬇️ Descargando s3://$BUCKET/$KEY"
+          aws s3 cp "s3://$BUCKET/$KEY" "$WORKDIR/lambda.zip"
 
           echo "📦 Descomprimiendo"
           unzip -q "$WORKDIR/lambda.zip" -d "$WORKDIR/unzipped"
@@ -145,32 +130,17 @@ jobs:
           echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
           echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
 
-      - name: Ensure hash-based Lambda artifact exists (UAT)
-        run: |
-          BUCKET="bancow-artifacts-uat"
-          STABLE_KEY="lambda/bancow-service.zip"
-          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
-
-          echo "🔎 Validando artifact por hash: s3://$BUCKET/$HASH_KEY"
-          if aws s3api head-object --bucket "$BUCKET" --key "$HASH_KEY" >/dev/null 2>&1; then
-            echo "✅ Ya existe el artifact por hash."
-          else
-            echo "ℹ️ No existe el artifact por hash. Copiando desde el key estable: s3://$BUCKET/$STABLE_KEY"
-            aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
-            echo "✅ Artifact copiado a key por hash."
-          fi
-
       - name: Validate Lambda artifact handlers (UAT)
         run: |
           BUCKET="bancow-artifacts-uat"
-          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+          KEY="lambda/bancow-service.zip"
 
           WORKDIR="/tmp/bancow_lambda_artifact"
           rm -rf "$WORKDIR"
           mkdir -p "$WORKDIR/unzipped"
 
-          echo "⬇️ Descargando s3://$BUCKET/$HASH_KEY"
-          aws s3 cp "s3://$BUCKET/$HASH_KEY" "$WORKDIR/lambda.zip"
+          echo "⬇️ Descargando s3://$BUCKET/$KEY"
+          aws s3 cp "s3://$BUCKET/$KEY" "$WORKDIR/lambda.zip"
 
           echo "📦 Descomprimiendo"
           unzip -q "$WORKDIR/lambda.zip" -d "$WORKDIR/unzipped"
@@ -223,32 +193,17 @@ jobs:
           echo "hash=$ARTIFACT_HASH" >> $GITHUB_OUTPUT
           echo "📌 Artifact Hash from S3: $ARTIFACT_HASH"
 
-      - name: Ensure hash-based Lambda artifact exists (PROD)
-        run: |
-          BUCKET="bancow-artifacts-prod"
-          STABLE_KEY="lambda/bancow-service.zip"
-          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
-
-          echo "🔎 Validando artifact por hash: s3://$BUCKET/$HASH_KEY"
-          if aws s3api head-object --bucket "$BUCKET" --key "$HASH_KEY" >/dev/null 2>&1; then
-            echo "✅ Ya existe el artifact por hash."
-          else
-            echo "ℹ️ No existe el artifact por hash. Copiando desde el key estable: s3://$BUCKET/$STABLE_KEY"
-            aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
-            echo "✅ Artifact copiado a key por hash."
-          fi
-
       - name: Validate Lambda artifact handlers (PROD)
         run: |
           BUCKET="bancow-artifacts-prod"
-          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+          KEY="lambda/bancow-service.zip"
 
           WORKDIR="/tmp/bancow_lambda_artifact"
           rm -rf "$WORKDIR"
           mkdir -p "$WORKDIR/unzipped"
 
-          echo "⬇️ Descargando s3://$BUCKET/$HASH_KEY"
-          aws s3 cp "s3://$BUCKET/$HASH_KEY" "$WORKDIR/lambda.zip"
+          echo "⬇️ Descargando s3://$BUCKET/$KEY"
+          aws s3 cp "s3://$BUCKET/$KEY" "$WORKDIR/lambda.zip"
 
           echo "📦 Descomprimiendo"
           unzip -q "$WORKDIR/lambda.zip" -d "$WORKDIR/unzipped"

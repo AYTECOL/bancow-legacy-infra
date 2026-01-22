@@ -303,10 +303,10 @@ All environments require:
 - `LambdaSecurityGroupId` (security group for Lambda)
 - `LambdaArtifactBucket` (S3 bucket with artifacts)
 - `ArtifactBucket` (S3 bucket with async/step-functions Lambdas artifacts)
-- `ArtifactHash` (unique value per build/release; used to reference a new S3 key and force Lambda code update)
+- `ArtifactHash` (unique value per build/release; used to force Lambda code refresh even when using a stable S3 key)
 - `LogLevel` (DEBUG, INFO, WARN, ERROR)
 
-Optional (can be empty to use the hash-based key pattern):
+Optional (can be empty to use the default stable key `lambda/bancow-service.zip`):
 - `LambdaArtifactKey` (explicit S3 key for app Lambda artifact)
 - `ArtifactKey` (explicit S3 key for async Lambdas artifact)
 
@@ -351,8 +351,10 @@ Optional (can be empty to use the hash-based key pattern):
 ### Lambda Deployment Issues
 
 1. Verify artifact bucket and key in parameters
-2. If you are NOT using S3 versioning, ensure your pipeline uploads to a **new key per release**.
-   - This repo supports `lambda/bancow-service-${ArtifactHash}.zip` via `ArtifactHash`.
+2. If you are NOT using S3 versioning and you publish to a **stable key** (default: `lambda/bancow-service.zip`), your pipeline must:
+   - update `bancow-service-hash.txt` with a new `ArtifactHash` on every publish, and
+   - run the infra deploy passing that `ArtifactHash`.
+   This repo includes a CloudFormation Custom Resource that runs `UpdateFunctionCode` when `ArtifactHash` changes, forcing Lambdas to refresh code from the stable key.
 3. Ensure IAM role has permissions
 4. Validate VPC and subnet configuration
 

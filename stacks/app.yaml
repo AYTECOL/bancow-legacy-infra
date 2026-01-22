@@ -212,7 +212,7 @@ Resources:
         Key: !If
           - UseExplicitLambdaArtifactKey
           - !Ref LambdaArtifactKey
-          - !Sub 'lambda/bancow-service-${ArtifactHash}.zip'
+          - 'lambda/bancow-service.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 30
       MemorySize: 512
@@ -228,6 +228,131 @@ Resources:
           SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
           ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SOAP_CREDENTIALS_SECRET_ARN: !Ref SoapCredentialsArn
+
+  # Forces Lambda code refresh on every new ArtifactHash even if S3 key stays stable.
+  # This avoids S3 bucket versioning and avoids creating multiple ZIP objects per publish.
+  ServiceFunctionCodeUpdaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+        - PolicyName: UpdateFunctionCode
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:UpdateFunctionCode
+                Resource:
+                  - !GetAtt ServiceFunction.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${LambdaArtifactBucket}/*'
+
+  ServiceFunctionCodeUpdater:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-service-code-updater'
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt ServiceFunctionCodeUpdaterRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib.request
+          import urllib.error
+
+          lambda_client = boto3.client('lambda')
+
+          def _send(event, context, status, data=None, reason=None):
+              response_url = event['ResponseURL']
+              body = {
+                  'Status': status,
+                  'Reason': reason or f"See details in CloudWatch Log Stream: {context.log_stream_name}",
+                  'PhysicalResourceId': event.get('PhysicalResourceId') or context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': data or {}
+              }
+              json_body = json.dumps(body).encode('utf-8')
+              req = urllib.request.Request(
+                  response_url,
+                  data=json_body,
+                  method='PUT',
+                  headers={
+                      'content-type': '',
+                      'content-length': str(len(json_body))
+                  }
+              )
+              with urllib.request.urlopen(req) as f:
+                  f.read()
+
+          def handler(event, context):
+              try:
+                  req_type = event.get('RequestType')
+                  props = event.get('ResourceProperties') or {}
+
+                  if req_type == 'Delete':
+                      _send(event, context, 'SUCCESS', {'deleted': True})
+                      return
+
+                  function_name = props.get('TargetFunctionName')
+                  bucket = props.get('S3Bucket')
+                  key = props.get('S3Key')
+
+                  if not function_name or not bucket or not key:
+                      _send(event, context, 'FAILED', reason='Missing TargetFunctionName/S3Bucket/S3Key')
+                      return
+
+                  resp = lambda_client.update_function_code(
+                      FunctionName=function_name,
+                      S3Bucket=bucket,
+                      S3Key=key,
+                      Publish=False
+                  )
+
+                  _send(event, context, 'SUCCESS', {
+                      'updated': True,
+                      'function': function_name,
+                      's3': f"s3://{bucket}/{key}",
+                      'codeSha256': resp.get('CodeSha256', '')
+                  })
+              except Exception as e:
+                  _send(event, context, 'FAILED', reason=str(e))
+
+  ServiceFunctionCodeUpdate:
+    Type: Custom::LambdaCodeUpdate
+    DependsOn:
+      - ServiceFunction
+    Properties:
+      ServiceToken: !GetAtt ServiceFunctionCodeUpdater.Arn
+      ArtifactHash: !Ref ArtifactHash
+      TargetFunctionName: !Ref ServiceFunction
+      S3Bucket: !Ref LambdaArtifactBucket
+      S3Key: !If
+        - UseExplicitLambdaArtifactKey
+        - !Ref LambdaArtifactKey
+        - 'lambda/bancow-service.zip'
 
   # Lambda Permissions to allow API Gateway to invoke the function
   ServiceFunctionPermission:

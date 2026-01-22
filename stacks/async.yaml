@@ -72,7 +72,7 @@ Resources:
         S3Key: !If
           - UseExplicitArtifactKey
           - !Ref ArtifactKey
-          - !Sub 'lambda/bancow-service-${ArtifactHash}.zip'
+          - 'lambda/bancow-service.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 20
       MemorySize: 1024
@@ -102,7 +102,7 @@ Resources:
         S3Key: !If
           - UseExplicitArtifactKey
           - !Ref ArtifactKey
-          - !Sub 'lambda/bancow-service-${ArtifactHash}.zip'
+          - 'lambda/bancow-service.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 20
       MemorySize: 1024
@@ -120,6 +120,137 @@ Resources:
           SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
           ALLOW_INSECURE_TLS: !FindInMap [ SoapConfig, !Ref Environment, ALLOWINSECURETLS ]
           SECRETS_ARN: !Ref SoapCredentialsArn
+
+  # Forces Lambda code refresh on every new ArtifactHash even if S3 key stays stable.
+  AsyncFunctionsCodeUpdaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+        - PolicyName: UpdateFunctionCode
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:UpdateFunctionCode
+                Resource:
+                  - !GetAtt GetPersonFunction.Arn
+                  - !GetAtt GetAddressesFunction.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${ArtifactBucket}/*'
+
+  AsyncFunctionsCodeUpdater:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-async-code-updater'
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt AsyncFunctionsCodeUpdaterRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib.request
+
+          lambda_client = boto3.client('lambda')
+
+          def _send(event, context, status, data=None, reason=None):
+              response_url = event['ResponseURL']
+              body = {
+                  'Status': status,
+                  'Reason': reason or f"See details in CloudWatch Log Stream: {context.log_stream_name}",
+                  'PhysicalResourceId': event.get('PhysicalResourceId') or context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': data or {}
+              }
+              json_body = json.dumps(body).encode('utf-8')
+              req = urllib.request.Request(
+                  response_url,
+                  data=json_body,
+                  method='PUT',
+                  headers={
+                      'content-type': '',
+                      'content-length': str(len(json_body))
+                  }
+              )
+              with urllib.request.urlopen(req) as f:
+                  f.read()
+
+          def handler(event, context):
+              try:
+                  req_type = event.get('RequestType')
+                  props = event.get('ResourceProperties') or {}
+
+                  if req_type == 'Delete':
+                      _send(event, context, 'SUCCESS', {'deleted': True})
+                      return
+
+                  targets = props.get('TargetFunctionNames') or []
+                  bucket = props.get('S3Bucket')
+                  key = props.get('S3Key')
+
+                  if not targets or not bucket or not key:
+                      _send(event, context, 'FAILED', reason='Missing TargetFunctionNames/S3Bucket/S3Key')
+                      return
+
+                  updated = []
+                  for fn_name in targets:
+                      resp = lambda_client.update_function_code(
+                          FunctionName=fn_name,
+                          S3Bucket=bucket,
+                          S3Key=key,
+                          Publish=False
+                      )
+                      updated.append({
+                          'function': fn_name,
+                          'codeSha256': resp.get('CodeSha256', '')
+                      })
+
+                  _send(event, context, 'SUCCESS', {
+                      'updated': updated,
+                      's3': f"s3://{bucket}/{key}"
+                  })
+              except Exception as e:
+                  _send(event, context, 'FAILED', reason=str(e))
+
+  AsyncFunctionsCodeUpdate:
+    Type: Custom::LambdaCodeUpdate
+    DependsOn:
+      - GetPersonFunction
+      - GetAddressesFunction
+    Properties:
+      ServiceToken: !GetAtt AsyncFunctionsCodeUpdater.Arn
+      ArtifactHash: !Ref ArtifactHash
+      TargetFunctionNames:
+        - !Ref GetPersonFunction
+        - !Ref GetAddressesFunction
+      S3Bucket: !Ref ArtifactBucket
+      S3Key: !If
+        - UseExplicitArtifactKey
+        - !Ref ArtifactKey
+        - 'lambda/bancow-service.zip'
 
   PersonNaturalStateMachineRole:
     Type: AWS::IAM::Role
