@@ -160,9 +160,15 @@ Resources:
                       application/json: |
                         #set($inputRoot = $input.path('$'))
                         #set($output = $util.parseJson($inputRoot.output))
+                        #set($domiciliosResp = $output.domiciliosPersonasResponse)
+                        #if($domiciliosResp.containsKey("listDomicilios"))
+                          #set($domicilios = $domiciliosResp.listDomicilios.domicilio)
+                        #else
+                          #set($domicilios = $domiciliosResp.domicilioPersona)
+                        #end
                         {
                           "domiciliosPersonasResponse": {
-                            "domicilioPersona": $util.toJson($output.domiciliosPersonasResponse.listDomicilios.domicilio)
+                            "domicilioPersona": $util.toJson($domicilios)
                           },
                           "personaFisicaResponse": $util.toJson($output.personaFisicaResponse)
                         }
