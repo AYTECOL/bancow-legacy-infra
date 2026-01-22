@@ -175,6 +175,21 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
+        - PolicyName: HttpInvokePermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:RetrieveConnectionCredentials
+                  - events:DescribeConnection
+                Resource:
+                  - arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/*
+
+              - Effect: Allow
+                Action:
+                  - events:InvokeApiDestination
+                Resource: "*"
 
   PersonNaturalStateMachine:
     Type: AWS::Serverless::StateMachine

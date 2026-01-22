@@ -72,13 +72,25 @@
         {
           "Variable": "$.request.consultarDomiciliosPersonas",
           "IsPresent": true,
-          "Next": "DecideDomicilios"
+          "Next": "ValidateExecutionMode"
         }
       ],
       "Default": "ValidationFailed"
     },
 
-    "DecideDomicilios": {
+    "ValidateExecutionMode": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.executionMode",
+          "StringEquals": "HTTP",
+          "Next": "DecideDomiciliosHttp"
+        }
+      ],
+      "Default": "DecideDomiciliosLambda"
+    },
+
+    "DecideDomiciliosLambda": {
       "Type": "Choice",
       "Choices": [
         {
@@ -107,26 +119,7 @@
               "ResultSelector": {
                 "persona.$": "$.Payload"
               },
-              "Retry": [
-                {
-                  "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 3,
-                  "BackoffRate": 2
-                }
-              ],
-              "Catch": [
-                {
-                  "ErrorEquals": ["States.ALL"],
-                  "Next": "PhysicalPersonFailed"
-                }
-              ],
               "End": true
-            },
-            "PhysicalPersonFailed": {
-              "Type": "Fail",
-              "Error": "PhysicalPersonError",
-              "Cause": "Failed to retrieve physical person data"
             }
           }
         },
@@ -145,26 +138,69 @@
                   "domicilioPersona.$": "$.Payload.listDomicilios.domicilio"
                 }
               },
-              "Retry": [
-                {
-                  "ErrorEquals": ["States.TaskFailed"],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 3,
-                  "BackoffRate": 2
-                }
-              ],
-              "Catch": [
-                {
-                  "ErrorEquals": ["States.ALL"],
-                  "Next": "AddressesFailed"
-                }
-              ],
               "End": true
-            },
-            "AddressesFailed": {
-              "Type": "Fail",
-              "Error": "AddressesError",
-              "Cause": "Failed to retrieve addresses data"
+            }
+          }
+        }
+      ],
+      "Next": "MergeParallelResults"
+    },
+
+    "DecideDomiciliosHttp": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.consultarDomiciliosPersonas",
+          "BooleanEquals": true,
+          "Next": "ParallelHttpPersonaDomicilios"
+        }
+      ],
+      "Default": "OnlyPersonHttp"
+    },
+
+    "ParallelHttpPersonaDomicilios": {
+      "Type": "Parallel",
+      "ResultPath": "$.parallel",
+      "Branches": [
+        {
+          "StartAt": "HttpGetPhysicalPerson",
+          "States": {
+            "HttpGetPhysicalPerson": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::http:invoke",
+              "Parameters": {
+                "Method": "POST",
+                "Url": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
+                "Authentication": {
+                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
+                },
+                "Body.$": "$.request"
+              },
+              "ResultSelector": {
+                "persona.$": "$.ResponseBody"
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "HttpGetAddresses",
+          "States": {
+            "HttpGetAddresses": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::http:invoke",
+              "Parameters": {
+                "Method": "POST",
+                "Url": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses",
+                "Authentication": {
+                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
+                },
+                "Body.$": "$.request"
+              },
+              "ResultSelector": {
+                "domiciliosPersonasResponse.$": "$.ResponseBody"
+              },
+              "End": true
             }
           }
         }
@@ -191,31 +227,22 @@
       "ResultSelector": {
         "personaFisicaResponse.$": "$.Payload"
       },
-      "ResultPath": "$.result",
-      "Retry": [
-        {
-          "ErrorEquals": ["States.TaskFailed"],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 3,
-          "BackoffRate": 2
-        }
-      ],
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "Next": "ProcessingFailed"
-        }
-      ],
-      "Next": "PrepareSingleResult"
+      "Next": "HttpResponse"
     },
 
-    "PrepareSingleResult": {
-      "Type": "Pass",
+    "OnlyPersonHttp": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::http:invoke",
       "Parameters": {
-        "domiciliosPersonasResponse": {
-          "domicilioPersona": []
+        "Method": "POST",
+        "Url": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
+        "Authentication": {
+          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
         },
-        "personaFisicaResponse.$": "$.result.personaFisicaResponse"
+        "Body.$": "$.request"
+      },
+      "ResultSelector": {
+        "personaFisicaResponse.$": "$.ResponseBody"
       },
       "Next": "HttpResponse"
     },
@@ -233,12 +260,6 @@
       "Type": "Fail",
       "Error": "ValidationError",
       "Cause": "Missing required input fields"
-    },
-
-    "ProcessingFailed": {
-      "Type": "Fail",
-      "Error": "ProcessingError",
-      "Cause": "Unexpected error during processing"
     }
   }
 }
