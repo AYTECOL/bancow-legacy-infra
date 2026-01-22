@@ -61,7 +61,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-person'
       Runtime: nodejs22.x
-      Handler: index.getPhysicalSfn
+      Handler: index.getPhysicalPersonSfn
       Code:
         S3Bucket: !Ref ArtifactBucket
         S3Key: !Ref ArtifactKey
@@ -88,7 +88,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-addresses'
       Runtime: nodejs22.x
-      Handler: index.getAddressesSfn
+      Handler: index.getAddressesPersonSfn
       Code:
         S3Bucket: !Ref ArtifactBucket
         S3Key: !Ref ArtifactKey
