@@ -172,7 +172,7 @@
                 "Method": "POST",
                 "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
                 "Authentication": {
-                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
+                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
                 },
                 "RequestBody.$": "$.request"
               },
@@ -193,7 +193,7 @@
                 "Method": "POST",
                 "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses",
                 "Authentication": {
-                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
+                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
                 },
                 "RequestBody.$": "$.request"
               },
@@ -237,7 +237,7 @@
         "Method": "POST",
         "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
         "Authentication": {
-          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
+          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
         },
         "Body.$": "$.request"
       },
