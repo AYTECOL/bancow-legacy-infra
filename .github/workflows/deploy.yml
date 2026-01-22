@@ -73,6 +73,24 @@ jobs:
             echo "✅ Artifact copiado a key por hash."
           fi
 
+      - name: Validate Lambda artifact handlers (DEV)
+        run: |
+          BUCKET="bancow-artifacts-dev"
+          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+
+          WORKDIR="/tmp/bancow_lambda_artifact"
+          rm -rf "$WORKDIR"
+          mkdir -p "$WORKDIR/unzipped"
+
+          echo "⬇️ Descargando s3://$BUCKET/$HASH_KEY"
+          aws s3 cp "s3://$BUCKET/$HASH_KEY" "$WORKDIR/lambda.zip"
+
+          echo "📦 Descomprimiendo"
+          unzip -q "$WORKDIR/lambda.zip" -d "$WORKDIR/unzipped"
+
+          echo "🔍 Verificando exports requeridos"
+          node -e 'const h=require("/tmp/bancow_lambda_artifact/unzipped/index.js"); const required=["main","getPhysicalPersonSfn","getAddressesPersonSfn"]; const missing=required.filter(k=>typeof h[k]!=="function"); if(missing.length){ console.error("❌ Handlers faltantes:", missing); console.error("exports:", Object.keys(h)); process.exit(1);} console.log("✅ Artifact OK. exports:", Object.keys(h));'
+
       - name: Deploy to DEV
         run: |
           STACK_NAME="bancow-dev-infra"
@@ -142,6 +160,24 @@ jobs:
             echo "✅ Artifact copiado a key por hash."
           fi
 
+      - name: Validate Lambda artifact handlers (UAT)
+        run: |
+          BUCKET="bancow-artifacts-uat"
+          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+
+          WORKDIR="/tmp/bancow_lambda_artifact"
+          rm -rf "$WORKDIR"
+          mkdir -p "$WORKDIR/unzipped"
+
+          echo "⬇️ Descargando s3://$BUCKET/$HASH_KEY"
+          aws s3 cp "s3://$BUCKET/$HASH_KEY" "$WORKDIR/lambda.zip"
+
+          echo "📦 Descomprimiendo"
+          unzip -q "$WORKDIR/lambda.zip" -d "$WORKDIR/unzipped"
+
+          echo "🔍 Verificando exports requeridos"
+          node -e 'const h=require("/tmp/bancow_lambda_artifact/unzipped/index.js"); const required=["main","getPhysicalPersonSfn","getAddressesPersonSfn"]; const missing=required.filter(k=>typeof h[k]!=="function"); if(missing.length){ console.error("❌ Handlers faltantes:", missing); console.error("exports:", Object.keys(h)); process.exit(1);} console.log("✅ Artifact OK. exports:", Object.keys(h));'
+
       - name: Deploy to UAT
         run: |
           jq -r '.Parameters | to_entries | map(select(.key != "ArtifactHash") | select((.value|tostring) != "")) | map("\(.key)=\(.value)") | join(" ")' environments/uat/parameters.json > params_uat.txt
@@ -201,6 +237,24 @@ jobs:
             aws s3 cp "s3://$BUCKET/$STABLE_KEY" "s3://$BUCKET/$HASH_KEY"
             echo "✅ Artifact copiado a key por hash."
           fi
+
+      - name: Validate Lambda artifact handlers (PROD)
+        run: |
+          BUCKET="bancow-artifacts-prod"
+          HASH_KEY="lambda/bancow-service-${{ steps.get-hash.outputs.hash }}.zip"
+
+          WORKDIR="/tmp/bancow_lambda_artifact"
+          rm -rf "$WORKDIR"
+          mkdir -p "$WORKDIR/unzipped"
+
+          echo "⬇️ Descargando s3://$BUCKET/$HASH_KEY"
+          aws s3 cp "s3://$BUCKET/$HASH_KEY" "$WORKDIR/lambda.zip"
+
+          echo "📦 Descomprimiendo"
+          unzip -q "$WORKDIR/lambda.zip" -d "$WORKDIR/unzipped"
+
+          echo "🔍 Verificando exports requeridos"
+          node -e 'const h=require("/tmp/bancow_lambda_artifact/unzipped/index.js"); const required=["main","getPhysicalPersonSfn","getAddressesPersonSfn"]; const missing=required.filter(k=>typeof h[k]!=="function"); if(missing.length){ console.error("❌ Handlers faltantes:", missing); console.error("exports:", Object.keys(h)); process.exit(1);} console.log("✅ Artifact OK. exports:", Object.keys(h));'
 
       - name: Deploy to PROD
         run: |
