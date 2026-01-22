@@ -80,7 +80,7 @@ Resources:
           Value: Data
 
   # Async Stack - Step Functions orchestration (atomic lambdas + workflows)
-  AsyncStack:
+  AsyncStackV2:
     Type: AWS::CloudFormation::Stack
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
@@ -119,7 +119,7 @@ Resources:
         WebACLArn: !GetAtt SecurityStack.Outputs.WebACLArn
         LambdaArtifactBucket: !Ref LambdaArtifactBucket
         LambdaArtifactKey: !Ref LambdaArtifactKey
-        PersonNaturalStateMachineArn: !GetAtt AsyncStack.Outputs.StateMachineArn
+        PersonNaturalStateMachineArn: !GetAtt AsyncStackV2.Outputs.StateMachineArn
         LogLevel: !Ref LogLevel
       Tags:
         - Key: Environment
@@ -147,5 +147,5 @@ Outputs:
   # Async Stack Outputs
   PersonNaturalStateMachineArn:
     Description: ARN of the Person Natural State Machine
-    Value: !GetAtt AsyncStack.Outputs.StateMachineArn
+    Value: !GetAtt AsyncStackV2.Outputs.StateMachineArn
 
