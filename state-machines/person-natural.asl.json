@@ -301,7 +301,7 @@
                 "persona": {
                   "error": {
                     "source": "HTTP",
-                    "statusCode.$": "States.ArrayGetItem(States.StringSplit($.busError.Error, '.'), 4)",
+                    "statusCode.$": "$.busError.Error",
                     "cause.$": "$.busError.Cause"
                   }
                 }
@@ -367,7 +367,7 @@
                 "domiciliosPersonasResponse": {
                   "error": {
                     "source": "HTTP",
-                    "statusCode.$": "States.ArrayGetItem(States.StringSplit($.busError.Error, '.'), 4)",
+                    "statusCode.$": "$.busError.Error",
                     "cause.$": "$.busError.Cause"
                   }
                 }
@@ -499,7 +499,7 @@
         "personaFisicaResponse": {
           "error": {
             "source": "HTTP",
-            "statusCode.$": "States.ArrayGetItem(States.StringSplit($.busError.Error, '.'), 4)",
+            "statusCode.$": "$.busError.Error",
             "cause.$": "$.busError.Cause"
           }
         }
