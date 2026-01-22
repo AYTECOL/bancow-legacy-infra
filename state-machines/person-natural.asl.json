@@ -246,7 +246,7 @@
       },
       "ResultPath": "$.personaFisicaResponse",
       "ResultSelector": {
-        "$.$": "$.Payload"
+        "$": "$.Payload"
       },
       "Next": "HttpResponse"
     },
@@ -270,7 +270,7 @@
       },
       "ResultPath": "$.personaFisicaResponse",
       "ResultSelector": {
-        "$.$": "$.ResponseBody"
+        "$": "$.ResponseBody"
       },
       "Next": "HttpResponse"
     },
