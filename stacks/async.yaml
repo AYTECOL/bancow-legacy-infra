@@ -27,6 +27,8 @@ Parameters:
 
   ArtifactKey:
     Type: String
+    Default: ''
+    Description: Optional explicit S3 key for Lambda deployment package. If empty, a hash-based key is used.
 
   LogLevel:
     Type: String
@@ -49,6 +51,9 @@ Mappings:
       ALLOWINSECURETLS: 'false'
       SOAPENDPOINT: 'https://10.40.7.18:8017/bancow/servlet/com.dlya.bantotal.odwsbt_BTPersonas_v1'
 
+Conditions:
+  UseExplicitArtifactKey: !Not [ !Equals [ !Ref ArtifactKey, '' ] ]
+
 Resources:
   SfnLogGroup:
     Type: AWS::Logs::LogGroup
@@ -64,7 +69,10 @@ Resources:
       Handler: index.getPhysicalPersonSfn
       Code:
         S3Bucket: !Ref ArtifactBucket
-        S3Key: !Ref ArtifactKey
+        S3Key: !If
+          - UseExplicitArtifactKey
+          - !Ref ArtifactKey
+          - !Sub 'lambda/bancow-service-${ArtifactHash}.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 20
       MemorySize: 1024
@@ -91,7 +99,10 @@ Resources:
       Handler: index.getAddressesPersonSfn
       Code:
         S3Bucket: !Ref ArtifactBucket
-        S3Key: !Ref ArtifactKey
+        S3Key: !If
+          - UseExplicitArtifactKey
+          - !Ref ArtifactKey
+          - !Sub 'lambda/bancow-service-${ArtifactHash}.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 20
       MemorySize: 1024

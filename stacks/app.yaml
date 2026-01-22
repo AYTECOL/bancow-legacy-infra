@@ -49,7 +49,8 @@ Parameters:
 
   LambdaArtifactKey:
     Type: String
-    Description: S3 key for Lambda deployment package
+    Default: ''
+    Description: Optional explicit S3 key for Lambda deployment package. If empty, a hash-based key is used.
 
   ArtifactHash:
     Type: String
@@ -78,6 +79,9 @@ Mappings:
     prod:
       ALLOWINSECURETLS: 'false'
       SOAPENDPOINT: 'https://10.40.7.18:8017/bancow/servlet/com.dlya.bantotal.odwsbt_BTPersonas_v1'
+
+Conditions:
+  UseExplicitLambdaArtifactKey: !Not [ !Equals [ !Ref LambdaArtifactKey, '' ] ]
 
 Resources:
   # IAM Role for API Gateway to execute Step Functions
@@ -204,8 +208,11 @@ Resources:
       Runtime: nodejs22.x
       Handler: index.main
       CodeUri:
-        Bucket: !Sub 'bancow-artifacts-${Environment}'
-        Key: 'lambda/bancow-service.zip'
+        Bucket: !Ref LambdaArtifactBucket
+        Key: !If
+          - UseExplicitLambdaArtifactKey
+          - !Ref LambdaArtifactKey
+          - !Sub 'lambda/bancow-service-${ArtifactHash}.zip'
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 30
       MemorySize: 512
