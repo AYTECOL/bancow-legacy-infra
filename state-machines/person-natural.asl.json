@@ -170,7 +170,7 @@
               "Resource": "arn:aws:states:::http:invoke",
               "Parameters": {
                 "Method": "POST",
-                "Url": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
+                "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
                 "Authentication": {
                   "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
                 },
@@ -191,7 +191,7 @@
               "Resource": "arn:aws:states:::http:invoke",
               "Parameters": {
                 "Method": "POST",
-                "Url": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses",
+                "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses",
                 "Authentication": {
                   "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
                 },
@@ -235,7 +235,7 @@
       "Resource": "arn:aws:states:::http:invoke",
       "Parameters": {
         "Method": "POST",
-        "Url": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
+        "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
         "Authentication": {
           "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/3930733f-6406-41cf-83bd-4f290ffc4b53"
         },
