@@ -178,24 +178,24 @@ Resources:
                       application/json: |                        
                         #set($body = $util.parseJson($input.body))
                         
-                        #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                        $util.toJson($util.parseJson($body.output))
+                        #if($body.status == "SUCCEEDED" && $body.output)
+                        $body.output
                         #else
                         $util.toJson($body)
                         #end
                       text/plain: |
                         #set($body = $util.parseJson($input.body))
                         
-                        #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                        $util.toJson($util.parseJson($body.output))
+                        #if($body.status == "SUCCEEDED" && $body.output)
+                        $body.output
                         #else
                         $util.toJson($body)
                         #end
                       application/x-amz-json-1.0: |
                         #set($body = $util.parseJson($input.body))
                         
-                        #if($body.status == "SUCCEEDED" && $body.output && $body.output != "")
-                        $util.toJson($util.parseJson($body.output))
+                        #if($body.status == "SUCCEEDED" && $body.output)
+                        $body.output
                         #else
                         $util.toJson($body)
                         #end
