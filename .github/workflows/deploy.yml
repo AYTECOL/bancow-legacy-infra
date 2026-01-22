@@ -62,7 +62,9 @@ jobs:
           --on-failure DO_NOTHING \
           --role-arn ${{ secrets.CFN_EXECUTION_ROLE_ARN }} \
           --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
-          --parameter-overrides $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
+          --parameter-overrides \
+             ArtifactHash=${GITHUB_SHA} \
+             $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' environments/dev/parameters.json)
 
   deploy-uat:
     name: Deploy to UAT

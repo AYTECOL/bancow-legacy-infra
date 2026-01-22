@@ -47,6 +47,10 @@ Parameters:
     AllowedValues: [DEBUG, INFO, WARN, ERROR]
     Description: Application log level
 
+  ArtifactHash:
+    Type: String
+    Description: Forces Lambda update when artifact changes
+
 Resources:
   # Network Stack (or just parameters if using existing VPC)
   # In this case, network is managed externally, so we skip this stack
@@ -87,6 +91,7 @@ Resources:
     Properties:
       TemplateURL: async.yaml
       Parameters:
+        ArtifactHash: !Ref ArtifactHash
         Environment: !Ref Environment
         PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]
         LambdaSecurityGroupId: !Ref LambdaSecurityGroupId
@@ -109,6 +114,7 @@ Resources:
     Properties:
       TemplateURL: app.yaml
       Parameters:
+        ArtifactHash: !Ref ArtifactHash
         Environment: !Ref Environment
         VpcId: !Ref VpcId
         PrivateSubnetIds: !Join [',', !Ref PrivateSubnetIds]

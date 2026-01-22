@@ -47,9 +47,9 @@ Parameters:
     Type: String
     Description: S3 bucket containing Lambda deployment artifacts
 
-  LambdaArtifactKey:
+  ArtifactHash:
     Type: String
-    Description: S3 key for Lambda deployment package
+    Description: Forces Lambda update when artifact changes
 
   # V2 Step Functions integration
   PersonNaturalStateMachineArn:
@@ -206,6 +206,7 @@ Resources:
           - !Ref LambdaSecurityGroupId
       Environment:
         Variables:
+          ARTIFACT_HASH: !Ref ArtifactHash
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
           SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]

@@ -33,6 +33,10 @@ Parameters:
     Default: INFO
     AllowedValues: [ DEBUG, INFO, WARN, ERROR ]
 
+  ArtifactHash:
+    Type: String
+    Description: Forces Lambda update when artifact changes
+
 Mappings:
   SoapConfig:
     dev:
@@ -72,6 +76,7 @@ Resources:
         LogGroup: !Sub '/aws/lambda/bancow-${Environment}-person'
       Environment:
         Variables:
+          ARTIFACT_HASH: !Ref ArtifactHash
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
           SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
@@ -98,6 +103,7 @@ Resources:
         LogGroup: !Sub '/aws/lambda/bancow-${Environment}-addresses'
       Environment:
         Variables:
+          ARTIFACT_HASH: !Ref ArtifactHash
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: !Ref LogLevel
           SOAP_ENDPOINT: !FindInMap [ SoapConfig, !Ref Environment, SOAPENDPOINT ]
