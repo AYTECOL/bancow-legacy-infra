@@ -28,6 +28,30 @@
         {
           "Variable": "$.request.pais",
           "IsPresent": true,
+          "Next": "ValidateTipoIdentificacion"
+        }
+      ],
+      "Default": "ValidationFailed"
+    },
+
+    "ValidateTipoIdentificacion": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.tipoIdentificacion",
+          "IsPresent": true,
+          "Next": "ValidateConsultarDomicilios"
+        }
+      ],
+      "Default": "ValidationFailed"
+    },
+
+    "ValidateConsultarDomicilios": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.request.consultarDomiciliosPersonas",
+          "IsPresent": true,
           "Next": "DecideDomicilios"
         }
       ],
@@ -168,7 +192,8 @@
       "Parameters": {
         "domiciliosPersonasResponse": {
           "domicilioPersona": []
-        }
+        },
+        "personaFisicaResponse.$": "$.result.persona"
       },
       "Next": "Success"
     },

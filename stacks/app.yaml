@@ -158,21 +158,14 @@ Resources:
                     statusCode: '200'
                     responseTemplates:
                       application/json: |
-                        #set($root = $input.path('$'))
-                        #if($root.output && $root.output != "")
-                            #set($data = $util.parseJson($root.output))
-                            {
-                                "domiciliosPersonasResponse": {
-                                    ## 2. Accedemos a la ruta profunda y la asignamos a la nueva llave
-                                    "domicilioPersona": $util.toJson($data.domiciliosPersonasResponse.listDomicilios.domicilio)
-                                },
-                                "personaFisicaResponse": $util.toJson($data.personaFisicaResponse),
-                            }
-                        #else
-                            {
-                                "message": "StartSyncExecution no devolvió output"
-                            }
-                        #end
+                        #set($inputRoot = $input.path('$'))
+                        #set($output = $util.parseJson($inputRoot.output))
+                        {
+                          "domiciliosPersonasResponse": {
+                            "domicilioPersona": $util.toJson($output.domiciliosPersonasResponse.listDomicilios.domicilio)
+                          },
+                          "personaFisicaResponse": $util.toJson($output.personaFisicaResponse)
+                        }
               responses:
                 '200':
                   description: OK
