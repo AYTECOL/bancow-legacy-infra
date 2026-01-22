@@ -1,8 +1,28 @@
 {
   "Comment": "BANCOW - Natural Person Orchestration",
-  "StartAt": "Init",
+  "StartAt": "InitInput",
   "States": {
-    "Init": {
+    "InitInput": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$",
+          "IsString": true,
+          "Next": "ParseStringInput"
+        }
+      ],
+      "Default": "WrapObjectInput"
+    },
+
+    "ParseStringInput": {
+      "Type": "Pass",
+      "Parameters": {
+        "request.$": "States.StringToJson($)"
+      },
+      "Next": "ValidateMinimalInput"
+    },
+
+    "WrapObjectInput": {
       "Type": "Pass",
       "Parameters": {
         "request.$": "$"
