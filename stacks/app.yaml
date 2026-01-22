@@ -47,6 +47,10 @@ Parameters:
     Type: String
     Description: S3 bucket containing Lambda deployment artifacts
 
+  LambdaArtifactKey:
+    Type: String
+    Description: S3 key for Lambda deployment package
+
   ArtifactHash:
     Type: String
     Description: Forces Lambda update when artifact changes
