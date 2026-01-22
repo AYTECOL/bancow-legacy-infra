@@ -31,7 +31,7 @@ Parameters:
   LambdaArtifactKey:
     Type: String
     Default: ''
-    Description: Optional explicit S3 key for Lambda deployment package. If empty, a hash-based key is used in child stacks.
+    Description: Optional explicit S3 key for Lambda deployment package. If empty, child stacks use the default stable key (lambda/bancow-service.zip).
 
   # V2 (Async) parameters
   ArtifactBucket:
@@ -41,7 +41,7 @@ Parameters:
   ArtifactKey:
     Type: String
     Default: ''
-    Description: Optional explicit S3 key for v2 Lambda deployment package. If empty, a hash-based key is used in child stacks.
+    Description: Optional explicit S3 key for Async/StepFunctions Lambdas deployment package. If empty, child stacks use the default stable key (lambda/bancow-service.zip).
 
   LogLevel:
     Type: String

@@ -50,7 +50,7 @@ Parameters:
   LambdaArtifactKey:
     Type: String
     Default: ''
-    Description: Optional explicit S3 key for Lambda deployment package. If empty, a hash-based key is used.
+    Description: Optional explicit S3 key for Lambda deployment package. If empty, the default stable key (lambda/bancow-service.zip) is used.
 
   ArtifactHash:
     Type: String
