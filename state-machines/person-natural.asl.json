@@ -148,20 +148,28 @@
                     "DomainError"
                   ],
                   "ResultPath": "$.busError",
-                  "Next": "HandleBusLambdaErrorPersona"
+                  "Next": "ParseLambdaErrorPersona"
                 }
               ],
               "End": true
+            },
+            "ParseLambdaErrorPersona": {
+              "Type": "Pass",
+              "Parameters": {
+                "request.$": "$.request",
+                "parsedError.$": "States.StringToJson($.busError.Cause)"
+              },
+              "Next": "HandleBusLambdaErrorPersona"
             },
             "HandleBusLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
                 "persona": {
-                  "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+                  "message.$": "$.parsedError.errorMessage",
                   "error": {
-                    "type.$": "States.StringToJson($.busError.Cause).errorType",
-                    "message.$": "States.StringToJson($.busError.Cause).errorMessage",
-                    "metadata": {}
+                    "type.$": "$.parsedError.errorType",
+                    "message.$": "$.parsedError.errorMessage",
+                    "metadata.$": "$.parsedError.metadata"
                   }
                 }
               },
@@ -204,20 +212,28 @@
                     "DomainError"
                   ],
                   "ResultPath": "$.busError",
-                  "Next": "HandleBusLambdaErrorAddresses"
+                  "Next": "ParseLambdaErrorAddresses"
                 }
               ],
               "End": true
+            },
+            "ParseLambdaErrorAddresses": {
+              "Type": "Pass",
+              "Parameters": {
+                "request.$": "$.request",
+                "parsedError.$": "States.StringToJson($.busError.Cause)"
+              },
+              "Next": "HandleBusLambdaErrorAddresses"
             },
             "HandleBusLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse": {
-                  "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+                  "message.$": "$.parsedError.errorMessage",
                   "error": {
-                    "type.$": "States.StringToJson($.busError.Cause).errorType",
-                    "message.$": "States.StringToJson($.busError.Cause).errorMessage",
-                    "metadata": {}
+                    "type.$": "$.parsedError.errorType",
+                    "message.$": "$.parsedError.errorMessage",
+                    "metadata.$": "States.StringToJson($.busError.Cause).metadata"
                   }
                 }
               },
@@ -422,10 +438,19 @@
             "DomainError"
           ],
           "ResultPath": "$.busError",
-          "Next": "HandleBusLambdaErrorOnlyPerson"
+          "Next": "ParseLambdaErrorOnlyPerson"
         }
       ],
       "Next": "HttpResponse"
+    },
+
+    "ParseLambdaErrorOnlyPerson": {
+      "Type": "Pass",
+      "Parameters": {
+        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+        "parsedError.$": "States.StringToJson($.busError.Cause)"
+      },
+      "Next": "HandleBusLambdaErrorOnlyPerson"
     },
 
     "HandleBusLambdaErrorOnlyPerson": {
@@ -433,10 +458,10 @@
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
         "personaFisicaResponse": {
-          "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+          "message.$": "$.parsedError.errorMessage",
           "error": {
-            "type.$": "States.StringToJson($.busError.Cause).errorType",
-            "message.$": "States.StringToJson($.busError.Cause).errorMessage",
+            "type.$": "$.parsedError.errorType",
+            "message.$": "$.parsedError.errorMessage",
             "metadata": {}
           }
         }
