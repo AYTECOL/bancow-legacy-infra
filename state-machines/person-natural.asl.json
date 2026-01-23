@@ -111,10 +111,19 @@
             "ParseLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
+                "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+                "request.$": "$.request",
+                "defaultError.$": "$.defaultError",
+                "busError.$": "$.busError",
+                "parsedError": {
+                  "errorType.$": "$.busError.Error",
+                  "errorMessage.$": "States.StringToJson($.busError.Cause).errorMessage",
+                  "metadata.$": "States.StringToJson($.busError.Cause).metadata"
+                }
               },
               "Next": "HandleLambdaErrorPersona"
             },
+
             "HandleLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
@@ -158,10 +167,19 @@
             "ParseLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
+                "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+                "request.$": "$.request",
+                "defaultError.$": "$.defaultError",
+                "busError.$": "$.busError",
+                "parsedError": {
+                  "errorType.$": "$.busError.Error",
+                  "errorMessage.$": "States.StringToJson($.busError.Cause).errorMessage",
+                  "metadata.$": "States.StringToJson($.busError.Cause).metadata"
+                }
               },
               "Next": "HandleLambdaErrorAddresses"
             },
+
             "HandleLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
@@ -235,6 +253,10 @@
             "ParseHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
+                "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+                "request.$": "$.request",
+                "defaultError.$": "$.defaultError",
+                "busError.$": "$.busError",
                 "parsedError": {
                   "message.$": "$.busError.Cause",
                   "error": {
@@ -289,6 +311,10 @@
             "ParseHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
+                "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+                "request.$": "$.request",
+                "defaultError.$": "$.defaultError",
+                "busError.$": "$.busError",
                 "parsedError": {
                   "message.$": "$.busError.Cause",
                   "error": {
@@ -357,6 +383,10 @@
     "ParseHttpErrorOnlyPerson": {
       "Type": "Pass",
       "Parameters": {
+        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
+        "request.$": "$.request",
+        "defaultError.$": "$.defaultError",
+        "busError.$": "$.busError",
         "parsedError": {
           "message.$": "$.busError.Cause",
           "error": {
