@@ -9,7 +9,6 @@
       ],
       "Default": "WrapObjectInput"
     },
-
     "ParseStringInput": {
       "Type": "Pass",
       "Parameters": { "request.$": "States.StringToJson($)" },
@@ -26,6 +25,7 @@
       "Type": "Pass",
       "Parameters": {
         "request.$": "$.request",
+        "defaultError.$": "$.defaultError",
         "domiciliosPersonasResponse": ""
       },
       "Next": "ValidateExecutionMode"
@@ -58,11 +58,24 @@
     "ValidateConsultarDomicilios": {
       "Type": "Choice",
       "Choices": [
-        { "Variable": "$.request.consultarDomiciliosPersonas", "IsPresent": true, "Next": "InitOptionalOutputs" }
+        {
+          "Variable": "$.request.consultarDomiciliosPersonas",
+          "IsPresent": true,
+          "Next": "InitDefaultError"
+        }
       ],
       "Default": "ValidationFailed"
     },
-
+    "InitDefaultError": {
+      "Type": "Pass",
+      "Parameters": {
+        "error": {
+          "metadata": {}
+        }
+      },
+      "ResultPath": "$.defaultError",
+      "Next": "InitOptionalOutputs"
+    },
     "ValidateExecutionMode": {
       "Type": "Choice",
       "Choices": [
@@ -107,7 +120,7 @@
             "ParseLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge({\"metadata\": {}}, States.StringToJson($.busError.Cause))"
+                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleLambdaErrorPersona"
             },
@@ -157,7 +170,7 @@
             "ParseLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge({\"metadata\": {}}, States.StringToJson($.busError.Cause))"
+                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleLambdaErrorAddresses"
             },
@@ -241,7 +254,7 @@
             "ParseHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge({\"error\":{\"metadata\":{}}}, States.StringToJson($.busError.Cause))"
+                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleHttpErrorPersona"
             },
@@ -299,7 +312,7 @@
             "ParseHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge({\"error\":{\"metadata\":{}}}, States.StringToJson($.busError.Cause))"
+                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleHttpErrorAddresses"
             },
