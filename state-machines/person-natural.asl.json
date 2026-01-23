@@ -254,7 +254,11 @@
             "ParseHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
+                "parsedError": {
+                  "errorType.$": "$.busError.Error",
+                  "errorMessage.$": "$.busError.Cause",
+                  "metadata": {}
+                }
               },
               "Next": "HandleHttpErrorPersona"
             },
@@ -312,7 +316,11 @@
             "ParseHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.JsonMerge($.defaultError, States.StringToJson($.busError.Cause))"
+                "parsedError": {
+                  "errorType.$": "$.busError.Error",
+                  "errorMessage.$": "$.busError.Cause",
+                  "metadata": {}
+                }
               },
               "Next": "HandleHttpErrorAddresses"
             },
