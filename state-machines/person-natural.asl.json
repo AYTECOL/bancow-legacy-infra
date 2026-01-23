@@ -34,7 +34,7 @@
       "Type": "Pass",
       "Parameters": {
         "request.$": "$.request",
-        "domiciliosPersonasResponse": ""
+        "domiciliosPersonasResponse": {}
       },
       "Next": "ValidateExecutionMode"
     },
@@ -317,10 +317,11 @@
               "Type": "Pass",
               "Parameters": {
                 "persona": {
+                  "message.$": "States.StringToJson($.busError.Cause).message",
                   "error": {
-                    "source": "HTTP",
-                    "statusCode.$": "$.busError.Error",
-                    "cause.$": "$.busError.Cause"
+                    "type.$": "States.StringToJson($.busError.Cause).error.type",
+                    "message.$": "States.StringToJson($.busError.Cause).error.message",
+                    "metadata.$": "States.StringToJson($.busError.Cause).error.metadata"
                   }
                 }
               },
@@ -383,10 +384,11 @@
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse": {
+                  "message.$": "States.StringToJson($.busError.Cause).message",
                   "error": {
-                    "source": "HTTP",
-                    "statusCode.$": "$.busError.Error",
-                    "cause.$": "$.busError.Cause"
+                    "type.$": "States.StringToJson($.busError.Cause).error.type",
+                    "message.$": "States.StringToJson($.busError.Cause).error.message",
+                    "metadata.$": "States.StringToJson($.busError.Cause).error.metadata"
                   }
                 }
               },
@@ -525,10 +527,11 @@
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
         "personaFisicaResponse": {
+          "message.$": "States.StringToJson($.busError.Cause).message",
           "error": {
-            "source": "HTTP",
-            "statusCode.$": "$.busError.Error",
-            "cause.$": "$.busError.Cause"
+            "type.$": "States.StringToJson($.busError.Cause).error.type",
+            "message.$": "States.StringToJson($.busError.Cause).error.message",
+            "metadata.$": "States.StringToJson($.busError.Cause).error.metadata"
           }
         }
       },
