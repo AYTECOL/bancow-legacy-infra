@@ -3,18 +3,6 @@
   "StartAt": "InitInput",
   "States": {
     "InitInput": {
-      "Type": "Choice",
-      "Choices": [
-        { "Variable": "$", "IsString": true, "Next": "ParseStringInput" }
-      ],
-      "Default": "WrapObjectInput"
-    },
-    "ParseStringInput": {
-      "Type": "Pass",
-      "Parameters": { "request.$": "States.StringToJson($)" },
-      "Next": "ValidateInput"
-    },
-    "WrapObjectInput": {
       "Type": "Pass",
       "Parameters": { "request.$": "$" },
       "Next": "ValidateInput"
