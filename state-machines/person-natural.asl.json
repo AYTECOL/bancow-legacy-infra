@@ -26,7 +26,7 @@
       "Type": "Pass",
       "Parameters": {
         "request.$": "$.request",
-        "domiciliosPersonasResponse": {}
+        "domiciliosPersonasResponse": ""
       },
       "Next": "ValidateExecutionMode"
     },
@@ -76,7 +76,7 @@
       "Choices": [
         { "Variable": "$.request.consultarDomiciliosPersonas", "BooleanEquals": true, "Next": "ParallelPersonaDomicilios" }
       ],
-      "Default": "ParallelPersonaDomicilios"
+      "Default": "OnlyPerson"
     },
 
     "ParallelPersonaDomicilios": {
@@ -109,10 +109,10 @@
               "Parameters": {
                 "parsedError.$": "States.StringToJson($.busError.Cause)"
               },
-              "Next": "HandleBusLambdaErrorPersona"
+              "Next": "HandleLambdaErrorPersona"
             },
 
-            "HandleBusLambdaErrorPersona": {
+            "HandleLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
                 "persona": {
@@ -139,6 +139,11 @@
                 "FunctionName": "${GetAddressesFn}",
                 "Payload.$": "$.request"
               },
+              "ResultSelector": {
+                "domiciliosPersonasResponse": {
+                  "domicilioPersona.$": "$.Payload.listDomicilios.domicilio"
+                }
+              },
               "Catch": [
                 {
                   "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
@@ -154,10 +159,10 @@
               "Parameters": {
                 "parsedError.$": "States.StringToJson($.busError.Cause)"
               },
-              "Next": "HandleBusLambdaErrorAddresses"
+              "Next": "HandleLambdaErrorAddresses"
             },
 
-            "HandleBusLambdaErrorAddresses": {
+            "HandleLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse": {
@@ -182,7 +187,7 @@
       "Choices": [
         { "Variable": "$.request.consultarDomiciliosPersonas", "BooleanEquals": true, "Next": "ParallelHttpPersonaDomicilios" }
       ],
-      "Default": "ParallelHttpPersonaDomicilios"
+      "Default": "OnlyPersonHttp"
     },
 
     "ParallelHttpPersonaDomicilios": {
@@ -198,38 +203,32 @@
               "Parameters": {
                 "Method": "POST",
                 "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
-                "Authentication": { "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495" },
+                "Authentication": {
+                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
+                },
                 "RequestBody.$": "$.request"
               },
-              "Catch": [
-                {
-                  "ErrorEquals": ["States.Http.StatusCode.400","States.Http.StatusCode.401","States.Http.StatusCode.403","States.Http.StatusCode.404","States.Http.StatusCode.422"],
-                  "ResultPath": "$.busError",
-                  "Next": "ParseHttpErrorPersona"
-                }
-              ],
+              "ResultSelector": { "persona.$": "$.ResponseBody" },
               "End": true
-            },
-
-            "ParseHttpErrorPersona": {
-              "Type": "Pass",
+            }
+          }
+        },
+        {
+          "StartAt": "HttpGetAddresses",
+          "States": {
+            "HttpGetAddresses": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::http:invoke",
               "Parameters": {
-                "parsedError.$": "States.StringToJson($.busError.Cause)"
+                "Method": "POST",
+                "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses",
+                "Authentication": {
+                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
+                },
+                "RequestBody.$": "$.request"
               },
-              "Next": "HandleBusHttpErrorPersona"
-            },
-
-            "HandleBusHttpErrorPersona": {
-              "Type": "Pass",
-              "Parameters": {
-                "persona": {
-                  "message.$": "$.parsedError.message",
-                  "error": {
-                    "type.$": "$.parsedError.error.type",
-                    "message.$": "$.parsedError.error.message",
-                    "metadata.$": "$.parsedError.error.metadata"
-                  }
-                }
+              "ResultSelector": {
+                "domiciliosPersonasResponse.$": "$.ResponseBody"
               },
               "End": true
             }
@@ -242,8 +241,38 @@
     "MergeParallelResults": {
       "Type": "Pass",
       "Parameters": {
-        "domiciliosPersonasResponse.$": "$.parallel[1].domiciliosPersonasResponse",
-        "personaFisicaResponse.$": "$.parallel[0].persona"
+        "personaFisicaResponse.$": "$.parallel[0].persona",
+        "domiciliosPersonasResponse.$": "$.parallel[1].domiciliosPersonasResponse"
+      },
+      "Next": "HttpResponse"
+    },
+
+    "OnlyPerson": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${GetPersonFn}",
+        "Payload.$": "$.request"
+      },
+      "ResultSelector": {
+        "personaFisicaResponse.$": "$.Payload"
+      },
+      "Next": "HttpResponse"
+    },
+
+    "OnlyPersonHttp": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::http:invoke",
+      "Parameters": {
+        "Method": "POST",
+        "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
+        "Authentication": {
+          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
+        },
+        "RequestBody.$": "$.request"
+      },
+      "ResultSelector": {
+        "personaFisicaResponse.$": "$.ResponseBody"
       },
       "Next": "HttpResponse"
     },
@@ -251,8 +280,8 @@
     "HttpResponse": {
       "Type": "Pass",
       "Parameters": {
-        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
-        "personaFisicaResponse.$": "$.personaFisicaResponse"
+        "personaFisicaResponse.$": "$.personaFisicaResponse",
+        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse"
       },
       "End": true
     },
