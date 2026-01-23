@@ -120,7 +120,7 @@
                   "error": {
                     "type.$": "$.parsedError.errorType",
                     "message.$": "$.parsedError.errorMessage",
-                    "metadata.$": "$.parsedError.metadata"
+                    "metadata.$": "States.JsonMerge({}, $.parsedError.metadata)"
                   }
                 }
               },
@@ -170,7 +170,7 @@
                   "error": {
                     "type.$": "$.parsedError.errorType",
                     "message.$": "$.parsedError.errorMessage",
-                    "metadata.$": "$.parsedError.metadata"
+                    "metadata.$": "States.JsonMerge({}, $.parsedError.metadata)"
                   }
                 }
               },
@@ -241,7 +241,7 @@
                   "error": {
                     "type.$": "$.parsedError.error.type",
                     "message.$": "$.parsedError.error.message",
-                    "metadata.$": "$.parsedError.error.metadata"
+                    "metadata.$": "States.JsonMerge({}, $.parsedError.error.metadata)"
                   }
                 }
               },
@@ -299,7 +299,7 @@
                   "error": {
                     "type.$": "$.parsedError.error.type",
                     "message.$": "$.parsedError.error.message",
-                    "metadata.$": "$.parsedError.error.metadata"
+                    "metadata.$": "States.JsonMerge({}, $.parsedError.error.metadata)"
                   }
                 }
               },
