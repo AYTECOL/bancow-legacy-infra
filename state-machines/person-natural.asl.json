@@ -283,7 +283,12 @@
                 },
                 "RequestBody.$": "$.request"
               },
-              "ResultSelector": { "domiciliosPersonasResponse.$": "$.ResponseBody" },
+              "ResultSelector": {
+                "domiciliosPersonasResponse": {
+                  "domicilioPersona.$": "$.ResponseBody.listDomicilios.domicilio"
+                }
+              },
+
               "Catch": [
                 {
                   "ErrorEquals": ["States.ALL"],
