@@ -76,7 +76,7 @@
       "Choices": [
         { "Variable": "$.request.consultarDomiciliosPersonas", "BooleanEquals": true, "Next": "ParallelPersonaDomicilios" }
       ],
-      "Default": "OnlyPerson"
+      "Default": "ParallelPersonaDomicilios"
     },
 
     "ParallelPersonaDomicilios": {
@@ -182,7 +182,7 @@
       "Choices": [
         { "Variable": "$.request.consultarDomiciliosPersonas", "BooleanEquals": true, "Next": "ParallelHttpPersonaDomicilios" }
       ],
-      "Default": "OnlyPersonHttp"
+      "Default": "ParallelHttpPersonaDomicilios"
     },
 
     "ParallelHttpPersonaDomicilios": {
