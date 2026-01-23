@@ -5,28 +5,20 @@
     "InitInput": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$",
-          "IsString": true,
-          "Next": "ParseStringInput"
-        }
+        { "Variable": "$", "IsString": true, "Next": "ParseStringInput" }
       ],
       "Default": "WrapObjectInput"
     },
 
     "ParseStringInput": {
       "Type": "Pass",
-      "Parameters": {
-        "request.$": "States.StringToJson($)"
-      },
+      "Parameters": { "request.$": "States.StringToJson($)" },
       "Next": "ValidateMinimalInput"
     },
 
     "WrapObjectInput": {
       "Type": "Pass",
-      "Parameters": {
-        "request.$": "$"
-      },
+      "Parameters": { "request.$": "$" },
       "Next": "ValidateMinimalInput"
     },
 
@@ -42,11 +34,7 @@
     "ValidateMinimalInput": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.numeroIdentificacion",
-          "IsPresent": true,
-          "Next": "ValidatePais"
-        }
+        { "Variable": "$.request.numeroIdentificacion", "IsPresent": true, "Next": "ValidatePais" }
       ],
       "Default": "ValidationFailed"
     },
@@ -54,11 +42,7 @@
     "ValidatePais": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.pais",
-          "IsPresent": true,
-          "Next": "ValidateTipoIdentificacion"
-        }
+        { "Variable": "$.request.pais", "IsPresent": true, "Next": "ValidateTipoIdentificacion" }
       ],
       "Default": "ValidationFailed"
     },
@@ -66,11 +50,7 @@
     "ValidateTipoIdentificacion": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.tipoIdentificacion",
-          "IsPresent": true,
-          "Next": "ValidateConsultarDomicilios"
-        }
+        { "Variable": "$.request.tipoIdentificacion", "IsPresent": true, "Next": "ValidateConsultarDomicilios" }
       ],
       "Default": "ValidationFailed"
     },
@@ -78,11 +58,7 @@
     "ValidateConsultarDomicilios": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.consultarDomiciliosPersonas",
-          "IsPresent": true,
-          "Next": "InitOptionalOutputs"
-        }
+        { "Variable": "$.request.consultarDomiciliosPersonas", "IsPresent": true, "Next": "InitOptionalOutputs" }
       ],
       "Default": "ValidationFailed"
     },
@@ -90,11 +66,7 @@
     "ValidateExecutionMode": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.executionMode",
-          "StringEquals": "HTTP",
-          "Next": "DecideDomiciliosHttp"
-        }
+        { "Variable": "$.request.executionMode", "StringEquals": "HTTP", "Next": "DecideDomiciliosHttp" }
       ],
       "Default": "DecideDomiciliosLambda"
     },
@@ -102,11 +74,7 @@
     "DecideDomiciliosLambda": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.consultarDomiciliosPersonas",
-          "BooleanEquals": true,
-          "Next": "ParallelPersonaDomicilios"
-        }
+        { "Variable": "$.request.consultarDomiciliosPersonas", "BooleanEquals": true, "Next": "ParallelPersonaDomicilios" }
       ],
       "Default": "OnlyPerson"
     },
@@ -125,42 +93,25 @@
                 "FunctionName": "${GetPersonFn}",
                 "Payload.$": "$.request"
               },
-              "ResultSelector": {
-                "persona.$": "$.Payload"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "Lambda.ServiceException",
-                    "Lambda.TooManyRequestsException",
-                    "States.Timeout"
-                  ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ],
+              "ResultSelector": { "persona.$": "$.Payload" },
               "Catch": [
                 {
-                  "ErrorEquals": [
-                    "ValidationError",
-                    "BusinessRuleError",
-                    "DomainError"
-                  ],
+                  "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
                   "ResultPath": "$.busError",
                   "Next": "ParseLambdaErrorPersona"
                 }
               ],
               "End": true
             },
+
             "ParseLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "request.$": "$.request",
                 "parsedError.$": "States.StringToJson($.busError.Cause)"
               },
               "Next": "HandleBusLambdaErrorPersona"
             },
+
             "HandleBusLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
@@ -177,6 +128,7 @@
             }
           }
         },
+
         {
           "StartAt": "GetAddresses",
           "States": {
@@ -187,44 +139,24 @@
                 "FunctionName": "${GetAddressesFn}",
                 "Payload.$": "$.request"
               },
-              "ResultSelector": {
-                "domiciliosPersonasResponse": {
-                  "domicilioPersona.$": "$.Payload.listDomicilios.domicilio"
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "Lambda.ServiceException",
-                    "Lambda.TooManyRequestsException",
-                    "States.Timeout"
-                  ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ],
               "Catch": [
                 {
-                  "ErrorEquals": [
-                    "ValidationError",
-                    "BusinessRuleError",
-                    "DomainError"
-                  ],
+                  "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
                   "ResultPath": "$.busError",
                   "Next": "ParseLambdaErrorAddresses"
                 }
               ],
               "End": true
             },
+
             "ParseLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "request.$": "$.request",
                 "parsedError.$": "States.StringToJson($.busError.Cause)"
               },
               "Next": "HandleBusLambdaErrorAddresses"
             },
+
             "HandleBusLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
@@ -233,7 +165,7 @@
                   "error": {
                     "type.$": "$.parsedError.errorType",
                     "message.$": "$.parsedError.errorMessage",
-                    "metadata.$": "States.StringToJson($.busError.Cause).metadata"
+                    "metadata.$": "$.parsedError.metadata"
                   }
                 }
               },
@@ -248,11 +180,7 @@
     "DecideDomiciliosHttp": {
       "Type": "Choice",
       "Choices": [
-        {
-          "Variable": "$.request.consultarDomiciliosPersonas",
-          "BooleanEquals": true,
-          "Next": "ParallelHttpPersonaDomicilios"
-        }
+        { "Variable": "$.request.consultarDomiciliosPersonas", "BooleanEquals": true, "Next": "ParallelHttpPersonaDomicilios" }
       ],
       "Default": "OnlyPersonHttp"
     },
@@ -270,125 +198,36 @@
               "Parameters": {
                 "Method": "POST",
                 "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
-                "Authentication": {
-                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
-                },
-                "RequestBody": {
-                  "executionMode.$": "$.request.executionMode",
-                  "numeroIdentificacion.$": "$.request.numeroIdentificacion",
-                  "tipoIdentificacion.$": "$.request.tipoIdentificacion",
-                  "pais.$": "$.request.pais",
-                  "parametrosAdicionales.$": "$.request.parametrosAdicionales"
-                }
+                "Authentication": { "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495" },
+                "RequestBody.$": "$.request"
               },
-              "ResultSelector": {
-                "persona.$": "$.ResponseBody"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "States.Http.StatusCode.500",
-                    "States.Http.StatusCode.502",
-                    "States.Http.StatusCode.503",
-                    "States.Http.StatusCode.504",
-                    "States.Timeout"
-                  ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ],
               "Catch": [
                 {
-                  "ErrorEquals": [
-                    "States.Http.StatusCode.400",
-                    "States.Http.StatusCode.401",
-                    "States.Http.StatusCode.403",
-                    "States.Http.StatusCode.404",
-                    "States.Http.StatusCode.422"
-                  ],
+                  "ErrorEquals": ["States.Http.StatusCode.400","States.Http.StatusCode.401","States.Http.StatusCode.403","States.Http.StatusCode.404","States.Http.StatusCode.422"],
                   "ResultPath": "$.busError",
-                  "Next": "HandleBusHttpErrorPersona"
+                  "Next": "ParseHttpErrorPersona"
                 }
               ],
               "End": true
             },
+
+            "ParseHttpErrorPersona": {
+              "Type": "Pass",
+              "Parameters": {
+                "parsedError.$": "States.StringToJson($.busError.Cause)"
+              },
+              "Next": "HandleBusHttpErrorPersona"
+            },
+
             "HandleBusHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
                 "persona": {
-                  "message.$": "States.StringToJson($.busError.Cause).message",
+                  "message.$": "$.parsedError.message",
                   "error": {
-                    "type.$": "States.StringToJson($.busError.Cause).error.type",
-                    "message.$": "States.StringToJson($.busError.Cause).error.message",
-                    "metadata.$": "States.StringToJson($.busError.Cause).error.metadata"
-                  }
-                }
-              },
-              "End": true
-            }
-          }
-        },
-        {
-          "StartAt": "HttpGetAddresses",
-          "States": {
-            "HttpGetAddresses": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::http:invoke",
-              "Parameters": {
-                "Method": "POST",
-                "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/addresses",
-                "Authentication": {
-                  "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
-                },
-                "RequestBody": {
-                  "executionMode.$": "$.request.executionMode",
-                  "numeroIdentificacion.$": "$.request.numeroIdentificacion",
-                  "pais.$": "$.request.pais",
-                  "tipoIdentificacion.$": "$.request.tipoIdentificacion"
-                }
-              },
-              "ResultSelector": {
-                "domiciliosPersonasResponse.$": "$.ResponseBody"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "States.Http.StatusCode.500",
-                    "States.Http.StatusCode.502",
-                    "States.Http.StatusCode.503",
-                    "States.Http.StatusCode.504",
-                    "States.Timeout"
-                  ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2.0
-                }
-              ],
-              "Catch": [
-                {
-                  "ErrorEquals": [
-                    "States.Http.StatusCode.400",
-                    "States.Http.StatusCode.401",
-                    "States.Http.StatusCode.403",
-                    "States.Http.StatusCode.404",
-                    "States.Http.StatusCode.422"
-                  ],
-                  "ResultPath": "$.busError",
-                  "Next": "HandleBusHttpErrorAddresses"
-                }
-              ],
-              "End": true
-            },
-            "HandleBusHttpErrorAddresses": {
-              "Type": "Pass",
-              "Parameters": {
-                "domiciliosPersonasResponse": {
-                  "message.$": "States.StringToJson($.busError.Cause).message",
-                  "error": {
-                    "type.$": "States.StringToJson($.busError.Cause).error.type",
-                    "message.$": "States.StringToJson($.busError.Cause).error.message",
-                    "metadata.$": "States.StringToJson($.busError.Cause).error.metadata"
+                    "type.$": "$.parsedError.error.type",
+                    "message.$": "$.parsedError.error.message",
+                    "metadata.$": "$.parsedError.error.metadata"
                   }
                 }
               },
@@ -405,135 +244,6 @@
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.parallel[1].domiciliosPersonasResponse",
         "personaFisicaResponse.$": "$.parallel[0].persona"
-      },
-      "Next": "HttpResponse"
-    },
-
-    "OnlyPerson": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "Parameters": {
-        "FunctionName": "${GetPersonFn}",
-        "Payload.$": "$.request"
-      },
-      "ResultPath": "$.personaFisicaResponse",
-      "ResultSelector": {
-        "personaFisicaResponse.$": "$.Payload"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.TooManyRequestsException",
-            "States.Timeout"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 2,
-          "BackoffRate": 2.0
-        }
-      ],
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "ValidationError",
-            "BusinessRuleError",
-            "DomainError"
-          ],
-          "ResultPath": "$.busError",
-          "Next": "ParseLambdaErrorOnlyPerson"
-        }
-      ],
-      "Next": "HttpResponse"
-    },
-
-    "ParseLambdaErrorOnlyPerson": {
-      "Type": "Pass",
-      "Parameters": {
-        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
-        "parsedError.$": "States.StringToJson($.busError.Cause)"
-      },
-      "Next": "HandleBusLambdaErrorOnlyPerson"
-    },
-
-    "HandleBusLambdaErrorOnlyPerson": {
-      "Type": "Pass",
-      "Parameters": {
-        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
-        "personaFisicaResponse": {
-          "message.$": "$.parsedError.errorMessage",
-          "error": {
-            "type.$": "$.parsedError.errorType",
-            "message.$": "$.parsedError.errorMessage",
-            "metadata": {}
-          }
-        }
-      },
-      "Next": "HttpResponse"
-    },
-
-    "OnlyPersonHttp": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::http:invoke",
-      "Parameters": {
-        "Method": "POST",
-        "ApiEndpoint": "https://yv4bh5uymk.execute-api.us-east-1.amazonaws.com/dev/person/physical",
-        "Authentication": {
-          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/bancow-apigw-connection/b8969188-f094-4069-a04b-6689bcbf6495"
-        },
-        "RequestBody": {
-          "executionMode.$": "$.request.executionMode",
-          "numeroIdentificacion.$": "$.request.numeroIdentificacion",
-          "tipoIdentificacion.$": "$.request.tipoIdentificacion",
-          "pais.$": "$.request.pais",
-          "parametrosAdicionales.$": "$.request.parametrosAdicionales"
-        }
-      },
-      "ResultPath": "$.personaFisicaResponse",
-      "ResultSelector": {
-        "personaFisicaResponse.$": "$.ResponseBody"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "States.Http.StatusCode.500",
-            "States.Http.StatusCode.502",
-            "States.Http.StatusCode.503",
-            "States.Http.StatusCode.504",
-            "States.Timeout"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 2,
-          "BackoffRate": 2.0
-        }
-      ],
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.Http.StatusCode.400",
-            "States.Http.StatusCode.401",
-            "States.Http.StatusCode.403",
-            "States.Http.StatusCode.404",
-            "States.Http.StatusCode.422"
-          ],
-          "ResultPath": "$.busError",
-          "Next": "HandleBusHttpErrorOnlyPerson"
-        }
-      ],
-      "Next": "HttpResponse"
-    },
-
-    "HandleBusHttpErrorOnlyPerson": {
-      "Type": "Pass",
-      "Parameters": {
-        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
-        "personaFisicaResponse": {
-          "message.$": "States.StringToJson($.busError.Cause).message",
-          "error": {
-            "type.$": "States.StringToJson($.busError.Cause).error.type",
-            "message.$": "States.StringToJson($.busError.Cause).error.message",
-            "metadata.$": "States.StringToJson($.busError.Cause).error.metadata"
-          }
-        }
       },
       "Next": "HttpResponse"
     },
