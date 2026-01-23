@@ -14,13 +14,11 @@
       "Parameters": { "request.$": "States.StringToJson($)" },
       "Next": "ValidateMinimalInput"
     },
-
     "WrapObjectInput": {
       "Type": "Pass",
       "Parameters": { "request.$": "$" },
       "Next": "ValidateMinimalInput"
     },
-
     "InitOptionalOutputs": {
       "Type": "Pass",
       "Parameters": {
@@ -30,7 +28,6 @@
       },
       "Next": "ValidateExecutionMode"
     },
-
     "ValidateMinimalInput": {
       "Type": "Choice",
       "Choices": [
@@ -38,7 +35,6 @@
       ],
       "Default": "ValidationFailed"
     },
-
     "ValidatePais": {
       "Type": "Choice",
       "Choices": [
@@ -46,7 +42,6 @@
       ],
       "Default": "ValidationFailed"
     },
-
     "ValidateTipoIdentificacion": {
       "Type": "Choice",
       "Choices": [
@@ -54,7 +49,6 @@
       ],
       "Default": "ValidationFailed"
     },
-
     "ValidateConsultarDomicilios": {
       "Type": "Choice",
       "Choices": [
@@ -69,9 +63,7 @@
     "InitDefaultError": {
       "Type": "Pass",
       "Parameters": {
-        "error": {
-          "metadata": {}
-        }
+        "error": { "metadata": {} }
       },
       "ResultPath": "$.defaultError",
       "Next": "InitOptionalOutputs"
@@ -116,7 +108,6 @@
               ],
               "End": true
             },
-
             "ParseLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
@@ -124,7 +115,6 @@
               },
               "Next": "HandleLambdaErrorPersona"
             },
-
             "HandleLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
@@ -141,7 +131,6 @@
             }
           }
         },
-
         {
           "StartAt": "GetAddresses",
           "States": {
@@ -166,7 +155,6 @@
               ],
               "End": true
             },
-
             "ParseLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
@@ -174,7 +162,6 @@
               },
               "Next": "HandleLambdaErrorAddresses"
             },
-
             "HandleLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
@@ -208,6 +195,7 @@
       },
       "Next": "HttpResponse"
     },
+
     "DecideDomiciliosHttp": {
       "Type": "Choice",
       "Choices": [
@@ -237,32 +225,27 @@
               "ResultSelector": { "persona.$": "$.ResponseBody" },
               "Catch": [
                 {
-                  "ErrorEquals": [
-                    "States.Http.StatusCode.400",
-                    "States.Http.StatusCode.401",
-                    "States.Http.StatusCode.403",
-                    "States.Http.StatusCode.404",
-                    "States.Http.StatusCode.422"
-                  ],
+                  "ErrorEquals": ["States.ALL"],
                   "ResultPath": "$.busError",
                   "Next": "ParseHttpErrorPersona"
                 }
               ],
               "End": true
             },
-
             "ParseHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
                 "parsedError": {
-                  "errorType.$": "$.busError.Error",
-                  "errorMessage.$": "$.busError.Cause",
-                  "metadata": {}
+                  "message.$": "$.busError.Cause",
+                  "error": {
+                    "type.$": "$.busError.Error",
+                    "message.$": "$.busError.Cause",
+                    "metadata": {}
+                  }
                 }
               },
               "Next": "HandleHttpErrorPersona"
             },
-
             "HandleHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
@@ -279,7 +262,6 @@
             }
           }
         },
-
         {
           "StartAt": "HttpGetAddresses",
           "States": {
@@ -294,37 +276,30 @@
                 },
                 "RequestBody.$": "$.request"
               },
-              "ResultSelector": {
-                "domiciliosPersonasResponse.$": "$.ResponseBody"
-              },
+              "ResultSelector": { "domiciliosPersonasResponse.$": "$.ResponseBody" },
               "Catch": [
                 {
-                  "ErrorEquals": [
-                    "States.Http.StatusCode.400",
-                    "States.Http.StatusCode.401",
-                    "States.Http.StatusCode.403",
-                    "States.Http.StatusCode.404",
-                    "States.Http.StatusCode.422"
-                  ],
+                  "ErrorEquals": ["States.ALL"],
                   "ResultPath": "$.busError",
                   "Next": "ParseHttpErrorAddresses"
                 }
               ],
               "End": true
             },
-
             "ParseHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
                 "parsedError": {
-                  "errorType.$": "$.busError.Error",
-                  "errorMessage.$": "$.busError.Cause",
-                  "metadata": {}
+                  "message.$": "$.busError.Cause",
+                  "error": {
+                    "type.$": "$.busError.Error",
+                    "message.$": "$.busError.Cause",
+                    "metadata": {}
+                  }
                 }
               },
               "Next": "HandleHttpErrorAddresses"
             },
-
             "HandleHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
@@ -344,6 +319,7 @@
       ],
       "Next": "MergeParallelResults"
     },
+
     "MergeParallelResults": {
       "Type": "Pass",
       "Parameters": {
@@ -367,6 +343,44 @@
       "ResultPath": "$.personaFisicaResponse",
       "ResultSelector": {
         "personaFisicaResponse.$": "$.ResponseBody"
+      },
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.busError",
+          "Next": "ParseHttpErrorOnlyPerson"
+        }
+      ],
+      "Next": "HttpResponse"
+    },
+
+    "ParseHttpErrorOnlyPerson": {
+      "Type": "Pass",
+      "Parameters": {
+        "parsedError": {
+          "message.$": "$.busError.Cause",
+          "error": {
+            "type.$": "$.busError.Error",
+            "message.$": "$.busError.Cause",
+            "metadata": {}
+          }
+        }
+      },
+      "Next": "HandleHttpErrorOnlyPerson"
+    },
+
+    "HandleHttpErrorOnlyPerson": {
+      "Type": "Pass",
+      "Parameters": {
+        "personaFisicaResponse": {
+          "message.$": "$.parsedError.message",
+          "error": {
+            "type.$": "$.parsedError.error.type",
+            "message.$": "$.parsedError.error.message",
+            "metadata.$": "$.parsedError.error.metadata"
+          }
+        },
+        "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse"
       },
       "Next": "HttpResponse"
     },
