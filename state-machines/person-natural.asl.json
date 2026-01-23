@@ -107,7 +107,7 @@
             "ParseLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.StringToJson($.busError.Cause)"
+                "parsedError.$": "States.JsonMerge({\"metadata\": {}}, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleLambdaErrorPersona"
             },
@@ -120,7 +120,7 @@
                   "error": {
                     "type.$": "$.parsedError.errorType",
                     "message.$": "$.parsedError.errorMessage",
-                    "metadata.$": "States.JsonMerge({}, $.parsedError.metadata)"
+                    "metadata.$": "$.parsedError.metadata"
                   }
                 }
               },
@@ -157,7 +157,7 @@
             "ParseLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.StringToJson($.busError.Cause)"
+                "parsedError.$": "States.JsonMerge({\"metadata\": {}}, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleLambdaErrorAddresses"
             },
@@ -170,7 +170,7 @@
                   "error": {
                     "type.$": "$.parsedError.errorType",
                     "message.$": "$.parsedError.errorMessage",
-                    "metadata.$": "States.JsonMerge({}, $.parsedError.metadata)"
+                    "metadata.$": "$.parsedError.metadata"
                   }
                 }
               },
@@ -182,6 +182,19 @@
       "Next": "MergeParallelResults"
     },
 
+    "OnlyPerson": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${GetPersonFn}",
+        "Payload.$": "$.request"
+      },
+      "ResultPath": "$.personaFisicaResponse",
+      "ResultSelector": {
+        "personaFisicaResponse.$": "$.Payload"
+      },
+      "Next": "HttpResponse"
+    },
     "DecideDomiciliosHttp": {
       "Type": "Choice",
       "Choices": [
@@ -228,7 +241,7 @@
             "ParseHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.StringToJson($.busError.Cause)"
+                "parsedError.$": "States.JsonMerge({\"error\":{\"metadata\":{}}}, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleHttpErrorPersona"
             },
@@ -241,7 +254,7 @@
                   "error": {
                     "type.$": "$.parsedError.error.type",
                     "message.$": "$.parsedError.error.message",
-                    "metadata.$": "States.JsonMerge({}, $.parsedError.error.metadata)"
+                    "metadata.$": "$.parsedError.error.metadata"
                   }
                 }
               },
@@ -286,7 +299,7 @@
             "ParseHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
-                "parsedError.$": "States.StringToJson($.busError.Cause)"
+                "parsedError.$": "States.JsonMerge({\"error\":{\"metadata\":{}}}, States.StringToJson($.busError.Cause))"
               },
               "Next": "HandleHttpErrorAddresses"
             },
@@ -299,7 +312,7 @@
                   "error": {
                     "type.$": "$.parsedError.error.type",
                     "message.$": "$.parsedError.error.message",
-                    "metadata.$": "States.JsonMerge({}, $.parsedError.error.metadata)"
+                    "metadata.$": "$.parsedError.error.metadata"
                   }
                 }
               },
@@ -310,26 +323,11 @@
       ],
       "Next": "MergeParallelResults"
     },
-
     "MergeParallelResults": {
       "Type": "Pass",
       "Parameters": {
         "personaFisicaResponse.$": "$.parallel[0].persona",
         "domiciliosPersonasResponse.$": "$.parallel[1].domiciliosPersonasResponse"
-      },
-      "Next": "HttpResponse"
-    },
-
-    "OnlyPerson": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "Parameters": {
-        "FunctionName": "${GetPersonFn}",
-        "Payload.$": "$.request"
-      },
-      "ResultPath": "$.personaFisicaResponse",
-      "ResultSelector": {
-        "personaFisicaResponse.$": "$.Payload"
       },
       "Next": "HttpResponse"
     },
