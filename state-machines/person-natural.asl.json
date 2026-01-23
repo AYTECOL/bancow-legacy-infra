@@ -12,61 +12,36 @@
     "ParseStringInput": {
       "Type": "Pass",
       "Parameters": { "request.$": "States.StringToJson($)" },
-      "Next": "ValidateMinimalInput"
+      "Next": "ValidateInput"
     },
     "WrapObjectInput": {
       "Type": "Pass",
       "Parameters": { "request.$": "$" },
-      "Next": "ValidateMinimalInput"
+      "Next": "ValidateInput"
     },
-    "InitOptionalOutputs": {
-      "Type": "Pass",
-      "Parameters": {
-        "request.$": "$.request",
-        "defaultError.$": "$.defaultError",
-        "domiciliosPersonasResponse": ""
-      },
-      "Next": "ValidateExecutionMode"
-    },
-    "ValidateMinimalInput": {
-      "Type": "Choice",
-      "Choices": [
-        { "Variable": "$.request.numeroIdentificacion", "IsPresent": true, "Next": "ValidatePais" }
-      ],
-      "Default": "ValidationFailed"
-    },
-    "ValidatePais": {
-      "Type": "Choice",
-      "Choices": [
-        { "Variable": "$.request.pais", "IsPresent": true, "Next": "ValidateTipoIdentificacion" }
-      ],
-      "Default": "ValidationFailed"
-    },
-    "ValidateTipoIdentificacion": {
-      "Type": "Choice",
-      "Choices": [
-        { "Variable": "$.request.tipoIdentificacion", "IsPresent": true, "Next": "ValidateConsultarDomicilios" }
-      ],
-      "Default": "ValidationFailed"
-    },
-    "ValidateConsultarDomicilios": {
+    "ValidateInput": {
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "$.request.consultarDomiciliosPersonas",
-          "IsPresent": true,
-          "Next": "InitDefaultError"
+          "And": [
+            { "Variable": "$.request.numeroIdentificacion", "IsPresent": true },
+            { "Variable": "$.request.pais", "IsPresent": true },
+            { "Variable": "$.request.tipoIdentificacion", "IsPresent": true },
+            { "Variable": "$.request.consultarDomiciliosPersonas", "IsPresent": true }
+          ],
+          "Next": "InitContext"
         }
       ],
       "Default": "ValidationFailed"
     },
-    "InitDefaultError": {
+    "InitContext": {
       "Type": "Pass",
       "Parameters": {
-        "error": { "metadata": {} }
+        "request.$": "$.request",
+        "defaultError": { "error": { "metadata": {} } },
+        "domiciliosPersonasResponse": ""
       },
-      "ResultPath": "$.defaultError",
-      "Next": "InitOptionalOutputs"
+      "Next": "ValidateExecutionMode"
     },
     "ValidateExecutionMode": {
       "Type": "Choice",
@@ -103,12 +78,12 @@
                 {
                   "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
                   "ResultPath": "$.busError",
-                  "Next": "ParseLambdaErrorPersona"
+                  "Next": "MapLambdaErrorPersona"
                 }
               ],
               "End": true
             },
-            "ParseLambdaErrorPersona": {
+            "MapLambdaErrorPersona": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
@@ -121,10 +96,10 @@
                   "metadata.$": "$.busError"
                 }
               },
-              "Next": "HandleLambdaErrorPersona"
+              "Next": "BuildPersonaError"
             },
 
-            "HandleLambdaErrorPersona": {
+            "BuildPersonaError": {
               "Type": "Pass",
               "Parameters": {
                 "persona": {
@@ -159,12 +134,12 @@
                 {
                   "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
                   "ResultPath": "$.busError",
-                  "Next": "ParseLambdaErrorAddresses"
+                  "Next": "MapLambdaErrorAddresses"
                 }
               ],
               "End": true
             },
-            "ParseLambdaErrorAddresses": {
+            "MapLambdaErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
@@ -177,11 +152,11 @@
                   "metadata.$": "$.busError"
                 }
               },
-              "Next": "HandleLambdaErrorAddresses"
+              "Next": "BuildAddressesError"
             },
 
 
-            "HandleLambdaErrorAddresses": {
+            "BuildAddressesError": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse": {
@@ -216,12 +191,12 @@
         {
           "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
           "ResultPath": "$.busError",
-          "Next": "ParseLambdaErrorOnlyPerson"
+          "Next": "MapLambdaErrorOnlyPerson"
         }
       ],
       "Next": "HttpResponse"
     },
-    "ParseLambdaErrorOnlyPerson": {
+    "MapLambdaErrorOnlyPerson": {
       "Type": "Pass",
       "Parameters": {
         "personaFisicaResponse": {
@@ -267,12 +242,12 @@
                 {
                   "ErrorEquals": ["States.ALL"],
                   "ResultPath": "$.busError",
-                  "Next": "ParseHttpErrorPersona"
+                  "Next": "MapHttpErrorPersona"
                 }
               ],
               "End": true
             },
-            "ParseHttpErrorPersona": {
+            "MapHttpErrorPersona": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
@@ -288,9 +263,9 @@
                   }
                 }
               },
-              "Next": "HandleHttpErrorPersona"
+              "Next": "BuildHttpPersonaError"
             },
-            "HandleHttpErrorPersona": {
+            "BuildHttpPersonaError": {
               "Type": "Pass",
               "Parameters": {
                 "persona": {
@@ -325,12 +300,12 @@
                 {
                   "ErrorEquals": ["States.ALL"],
                   "ResultPath": "$.busError",
-                  "Next": "ParseHttpErrorAddresses"
+                  "Next": "MapHttpErrorAddresses"
                 }
               ],
               "End": true
             },
-            "ParseHttpErrorAddresses": {
+            "MapHttpErrorAddresses": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
@@ -346,9 +321,9 @@
                   }
                 }
               },
-              "Next": "HandleHttpErrorAddresses"
+              "Next": "BuildHttpAddressesError"
             },
-            "HandleHttpErrorAddresses": {
+            "BuildHttpAddressesError": {
               "Type": "Pass",
               "Parameters": {
                 "domiciliosPersonasResponse": {
@@ -396,13 +371,13 @@
         {
           "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.busError",
-          "Next": "ParseHttpErrorOnlyPerson"
+          "Next": "MapHttpErrorOnlyPerson"
         }
       ],
       "Next": "HttpResponse"
     },
 
-    "ParseHttpErrorOnlyPerson": {
+    "MapHttpErrorOnlyPerson": {
       "Type": "Pass",
       "Parameters": {
         "domiciliosPersonasResponse.$": "$.domiciliosPersonasResponse",
@@ -418,10 +393,10 @@
           }
         }
       },
-      "Next": "HandleHttpErrorOnlyPerson"
+      "Next": "BuildHttpOnlyPersonError"
     },
 
-    "HandleHttpErrorOnlyPerson": {
+    "BuildHttpOnlyPersonError": {
       "Type": "Pass",
       "Parameters": {
         "personaFisicaResponse": {
