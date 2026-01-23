@@ -117,8 +117,8 @@
                 "busError.$": "$.busError",
                 "parsedError": {
                   "errorType.$": "$.busError.Error",
-                  "errorMessage.$": "States.StringToJson($.busError.Cause).errorMessage",
-                  "metadata.$": "States.StringToJson($.busError.Cause).metadata"
+                  "errorMessage.$": "$.busError.Cause",
+                  "metadata.$": "$.busError"
                 }
               },
               "Next": "HandleLambdaErrorPersona"
@@ -173,12 +173,13 @@
                 "busError.$": "$.busError",
                 "parsedError": {
                   "errorType.$": "$.busError.Error",
-                  "errorMessage.$": "States.StringToJson($.busError.Cause).errorMessage",
-                  "metadata.$": "States.StringToJson($.busError.Cause).metadata"
+                  "errorMessage.$": "$.busError.Cause",
+                  "metadata.$": "$.busError"
                 }
               },
               "Next": "HandleLambdaErrorAddresses"
             },
+
 
             "HandleLambdaErrorAddresses": {
               "Type": "Pass",
