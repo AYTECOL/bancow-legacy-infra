@@ -209,10 +209,47 @@
                 "RequestBody.$": "$.request"
               },
               "ResultSelector": { "persona.$": "$.ResponseBody" },
+              "Catch": [
+                {
+                  "ErrorEquals": [
+                    "States.Http.StatusCode.400",
+                    "States.Http.StatusCode.401",
+                    "States.Http.StatusCode.403",
+                    "States.Http.StatusCode.404",
+                    "States.Http.StatusCode.422"
+                  ],
+                  "ResultPath": "$.busError",
+                  "Next": "ParseHttpErrorPersona"
+                }
+              ],
+              "End": true
+            },
+
+            "ParseHttpErrorPersona": {
+              "Type": "Pass",
+              "Parameters": {
+                "parsedError.$": "States.StringToJson($.busError.Cause)"
+              },
+              "Next": "HandleHttpErrorPersona"
+            },
+
+            "HandleHttpErrorPersona": {
+              "Type": "Pass",
+              "Parameters": {
+                "persona": {
+                  "message.$": "$.parsedError.message",
+                  "error": {
+                    "type.$": "$.parsedError.error.type",
+                    "message.$": "$.parsedError.error.message",
+                    "metadata.$": "$.parsedError.error.metadata"
+                  }
+                }
+              },
               "End": true
             }
           }
         },
+
         {
           "StartAt": "HttpGetAddresses",
           "States": {
@@ -229,6 +266,42 @@
               },
               "ResultSelector": {
                 "domiciliosPersonasResponse.$": "$.ResponseBody"
+              },
+              "Catch": [
+                {
+                  "ErrorEquals": [
+                    "States.Http.StatusCode.400",
+                    "States.Http.StatusCode.401",
+                    "States.Http.StatusCode.403",
+                    "States.Http.StatusCode.404",
+                    "States.Http.StatusCode.422"
+                  ],
+                  "ResultPath": "$.busError",
+                  "Next": "ParseHttpErrorAddresses"
+                }
+              ],
+              "End": true
+            },
+
+            "ParseHttpErrorAddresses": {
+              "Type": "Pass",
+              "Parameters": {
+                "parsedError.$": "States.StringToJson($.busError.Cause)"
+              },
+              "Next": "HandleHttpErrorAddresses"
+            },
+
+            "HandleHttpErrorAddresses": {
+              "Type": "Pass",
+              "Parameters": {
+                "domiciliosPersonasResponse": {
+                  "message.$": "$.parsedError.message",
+                  "error": {
+                    "type.$": "$.parsedError.error.type",
+                    "message.$": "$.parsedError.error.message",
+                    "metadata.$": "$.parsedError.error.metadata"
+                  }
+                }
               },
               "End": true
             }
