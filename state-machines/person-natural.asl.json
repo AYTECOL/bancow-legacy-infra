@@ -212,9 +212,30 @@
       "ResultSelector": {
         "personaFisicaResponse.$": "$.Payload"
       },
+      "Catch": [
+        {
+          "ErrorEquals": ["ValidationError", "BusinessRuleError", "DomainError"],
+          "ResultPath": "$.busError",
+          "Next": "ParseLambdaErrorOnlyPerson"
+        }
+      ],
       "Next": "HttpResponse"
     },
-
+    "ParseLambdaErrorOnlyPerson": {
+      "Type": "Pass",
+      "Parameters": {
+        "personaFisicaResponse": {
+          "message.$": "$.busError.Cause",
+          "error": {
+            "type.$": "$.busError.Error",
+            "message.$": "$.busError.Cause",
+            "metadata.$": "$.busError"
+          }
+        },
+        "domiciliosPersonasResponse": ""
+      },
+      "Next": "HttpResponse"
+    },
     "DecideDomiciliosHttp": {
       "Type": "Choice",
       "Choices": [
