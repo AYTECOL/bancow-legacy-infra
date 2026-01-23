@@ -254,6 +254,7 @@
         "FunctionName": "${GetPersonFn}",
         "Payload.$": "$.request"
       },
+      "ResultPath": "$.personaFisicaResponse",
       "ResultSelector": {
         "personaFisicaResponse.$": "$.Payload"
       },
@@ -271,6 +272,7 @@
         },
         "RequestBody.$": "$.request"
       },
+      "ResultPath": "$.personaFisicaResponse",
       "ResultSelector": {
         "personaFisicaResponse.$": "$.ResponseBody"
       },
