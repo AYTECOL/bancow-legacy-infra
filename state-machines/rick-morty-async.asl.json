@@ -8,7 +8,9 @@
       "Parameters": {
         "Method": "GET",
         "ApiEndpoint.$": "States.Format('https://rickandmortyapi.com/api/character/{}', $.characterId)",
-        "Authentication": {}
+        "Authentication": {
+          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/RickMortyPublic/e3b89041-f408-4cb4-84ff-79221e1dbb71"
+        }
       },
       "Retry": [
         {
