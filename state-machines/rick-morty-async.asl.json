@@ -56,7 +56,7 @@
         "TableName": "bancow-dev-async-results",
         "Item": {
           "requestId": {
-            "S.$": "$.requestId"
+            "S.$": "$$.Execution.Id"
           },
           "status": {
             "S": "COMPLETED"
@@ -87,7 +87,7 @@
         "TableName": "bancow-dev-async-results",
         "Item": {
           "requestId": {
-            "S.$": "$.requestId"
+            "S.$": "$$.Execution.Id"
           },
           "status": {
             "S": "FAILED"
