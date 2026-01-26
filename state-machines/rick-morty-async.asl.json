@@ -53,7 +53,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
       "Parameters": {
-        "TableName": "bancow-dev-async-results",
+        "TableName": "${AsyncResultsTable}",
         "Item": {
           "requestId": {
             "S.$": "$.requestId"
@@ -75,8 +75,49 @@
           },
           "ttl": {
             "N": "1769531400"
+          },
+          "processed": {
+            "S": "false"
           }
         }
+      },
+      "Next": "WaitBeforeCheck"
+    },
+    "WaitBeforeCheck": {
+      "Type": "Wait",
+      "Seconds": 10,
+      "Next": "CheckProcessed"
+    },
+    "CheckProcessed": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:dynamodb:getItem",
+      "Parameters": {
+        "TableName": "${AsyncResultsTable}",
+        "Key": {
+          "requestId": {
+            "S.$": "$.requestId"
+          }
+        }
+      },
+      "ResultPath": "$.ddb",
+      "Next": "IsProcessed"
+    },
+    "IsProcessed": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.ddb.Item.processed.S",
+          "StringEquals": "true",
+          "Next": "Finalize"
+        }
+      ],
+      "Default": "WaitBeforeCheck"
+    },
+    "Finalize": {
+      "Type": "Pass",
+      "Parameters": {
+        "requestId.$": "$.requestId",
+        "finalStatus": "ENDED_BY_POLLING"
       },
       "End": true
     },
@@ -84,7 +125,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
       "Parameters": {
-        "TableName": "bancow-dev-async-results",
+        "TableName": "${AsyncResultsTable}",
         "Item": {
           "requestId": {
             "S.$": "$.requestId"

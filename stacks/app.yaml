@@ -136,13 +136,14 @@ Resources:
                   - states:StartExecution
                 Resource: !Ref RickMortyStateMachineArn
 
-        - PolicyName: DynamoDBGetItem
+        - PolicyName: DynamoDBAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - dynamodb:GetItem
+                  - dynamodb:UpdateItem
                 Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AsyncResultsTableName}'
 
   # API Gateway REST API
@@ -266,7 +267,10 @@ Resources:
                     #set($requestId = $context.requestId)
                     {
                       "stateMachineArn": "${RickMortyStateMachineArn}",
-                      "input": "{\"requestId\": \"$requestId\", \"characterId\": $input.json('$.characterId')}"
+                      "input": "$util.escapeJavaScript($util.toJson({
+                        \"requestId\": \"$requestId\",
+                        \"characterId\": $input.json('$.characterId')
+                      }))"
                     }
                 responses:
                   default:
@@ -326,6 +330,7 @@ Resources:
                         {
                           "requestId": "$item.requestId.S",
                           "status": "$item.status.S",
+                          "processed": "$item.processed.S",
                           #if($item.characterId)
                           "characterId": $item.characterId.N,
                           #end
@@ -347,6 +352,48 @@ Resources:
                           "requestId": "$input.params('requestId')"
                         }
                         #end
+            post:
+              summary: Mark Rick and Morty process as completed
+              parameters:
+                - name: requestId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                '200':
+                  description: Process marked as completed
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                type: aws
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/UpdateItem'
+                httpMethod: POST
+                credentials: !GetAtt ApiRickMortyRole.Arn
+                requestTemplates:
+                  application/json: !Sub |
+                    {
+                      "TableName": "${AsyncResultsTableName}",
+                      "Key": {
+                        "requestId": { "S": "$input.params('requestId')" }
+                      },
+                      "UpdateExpression": "SET processed = :val",
+                      "ExpressionAttributeValues": {
+                        ":val": { "S": "true" }
+                      }
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        {
+                          "requestId": "$input.params('requestId')",
+                          "message": "Process marked as completed"
+                        }
         components:
           securitySchemes:
             CognitoAuthorizer:
