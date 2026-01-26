@@ -364,6 +364,18 @@ Resources:
                     application/json:
                       schema:
                         type: object
+                '400':
+                  description: Bad Request
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                '500':
+                  description: Internal Server Error
+                  content:
+                    application/json:
+                      schema:
+                        type: object
               x-amazon-apigateway-integration:
                 timeoutInMillis: 29000
                 type: aws
@@ -371,20 +383,7 @@ Resources:
                 httpMethod: POST
                 credentials: !GetAtt ApiRickMortyRole.Arn
                 requestTemplates:
-                  application/json: |
-                    {
-                      "TableName": "${AsyncResultsTableName}",
-                      "Key": {
-                        "requestId": { "S": "$input.params('requestId')" }
-                      },
-                      "UpdateExpression": "SET processed = :val",
-                      "ConditionExpression": "attribute_exists(requestId)",
-                      "ExpressionAttributeValues": {
-                        ":val": { "S": "true" }
-                      }
-                    }
-
-                  application/x-amz-json-1.0: |
+                  application/json: !Sub |
                     {
                       "TableName": "${AsyncResultsTableName}",
                       "Key": {
@@ -404,6 +403,25 @@ Resources:
                         {
                           "requestId": "$input.params('requestId')",
                           "message": "Process marked as completed"
+                        }
+                  4\d{2}:
+                    statusCode: '400'
+                    responseTemplates:
+                      application/json: |
+                        #set($context.responseOverride.status = 400)
+                        {
+                          "error": "Bad Request",
+                          "message": "Update failed. Check if requestId exists.",
+                          "requestId": "$input.params('requestId')"
+                        }
+                  5\d{2}:
+                    statusCode: '500'
+                    responseTemplates:
+                      application/json: |
+                        #set($context.responseOverride.status = 500)
+                        {
+                          "error": "Internal Server Error",
+                          "requestId": "$input.params('requestId')"
                         }
         components:
           securitySchemes:
