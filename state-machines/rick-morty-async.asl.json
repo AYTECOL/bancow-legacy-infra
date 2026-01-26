@@ -77,10 +77,11 @@
             "N": "1769531400"
           },
           "processed": {
-            "S": "false"
+            "BOOL": false
           }
         }
       },
+      "ResultPath": null,
       "Next": "WaitBeforeCheck"
     },
     "WaitBeforeCheck": {
@@ -106,8 +107,8 @@
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "$.ddb.Item.processed.S",
-          "StringEquals": "true",
+          "Variable": "$.ddb.Item.processed.BOOL",
+          "BooleanEquals": true,
           "Next": "Finalize"
         }
       ],

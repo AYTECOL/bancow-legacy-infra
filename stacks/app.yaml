@@ -378,8 +378,9 @@ Resources:
                         "requestId": { "S": "$input.params('requestId')" }
                       },
                       "UpdateExpression": "SET processed = :val",
+                      "ConditionExpression": "attribute_exists(requestId)",
                       "ExpressionAttributeValues": {
-                        ":val": { "S": "true" }
+                        ":val": { "BOOL": true }
                       }
                     }
                 responses:
