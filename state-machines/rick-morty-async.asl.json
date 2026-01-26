@@ -29,7 +29,7 @@
             "States.ALL"
           ],
           "ResultPath": "$.errorInfo",
-          "Next": "TransformError"
+          "Next": "SaveError"
         }
       ],
       "ResultPath": "$.apiResponse",
@@ -53,13 +53,13 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
       "Parameters": {
-        "TableName": "${AsyncResultsTable}",
+        "TableName": "bancow-dev-async-results",
         "Item": {
           "requestId": {
             "S.$": "$.requestId"
           },
           "status": {
-            "S.$": "$.status"
+            "S": "COMPLETED"
           },
           "characterId": {
             "N.$": "States.Format('{}', $.characterId)"
@@ -78,30 +78,19 @@
           }
         }
       },
-      "ResultPath": null,
-      "Next": "WaitForCallback"
-    },
-    "TransformError": {
-      "Type": "Pass",
-      "Parameters": {
-        "requestId.$": "$.requestId",
-        "status": "FAILED",
-        "characterId.$": "$.characterId",
-        "errorInfo.$": "$.errorInfo"
-      },
-      "Next": "SaveError"
+      "End": true
     },
     "SaveError": {
       "Type": "Task",
       "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
       "Parameters": {
-        "TableName": "${AsyncResultsTable}",
+        "TableName": "bancow-dev-async-results",
         "Item": {
           "requestId": {
             "S.$": "$.requestId"
           },
           "status": {
-            "S.$": "$.status"
+            "S": "FAILED"
           },
           "characterId": {
             "N.$": "States.Format('{}', $.characterId)"
@@ -117,45 +106,16 @@
           }
         }
       },
-      "ResultPath": null,
-      "Next": "WaitForCallback"
-    },
-    "WaitForCallback": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-      "Parameters": {
-        "FunctionName": "${DummyFunctionArn}",
-        "Payload": {
-          "taskToken.$": "$$.Task.Token",
-          "requestId.$": "$.requestId",
-          "status.$": "$.status"
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
         }
-      },
-      "HeartbeatSeconds": 300,
-      "TimeoutSeconds": 3600,
-      "ResultPath": "$.callbackResult",
-      "Next": "ProcessCallback"
-    },
-    "ProcessCallback": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::aws-sdk:dynamodb:updateItem",
-      "Parameters": {
-        "TableName": "${AsyncResultsTable}",
-        "Key": {
-          "requestId": {
-            "S.$": "$.requestId"
-          }
-        },
-        "UpdateExpression": "SET processed = :val, finalStatus = :status",
-        "ExpressionAttributeValues": {
-          ":val": {
-            "BOOL": true
-          },
-          ":status": {
-            "S": "PROCESSED"
-          }
-        }
-      },
+      ],
       "End": true
     }
   }
