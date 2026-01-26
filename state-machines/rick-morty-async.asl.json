@@ -77,7 +77,7 @@
             "N": "1769531400"
           },
           "processed": {
-            "BOOL": false
+            "S": "false"
           }
         }
       },
@@ -107,8 +107,8 @@
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "$.ddb.Item.processed.BOOL",
-          "BooleanEquals": true,
+          "Variable": "$.ddb.Item.processed.S",
+          "StringEquals": "true",
           "Next": "Finalize"
         }
       ],
