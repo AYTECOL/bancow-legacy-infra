@@ -25,7 +25,9 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": ["States.ALL"],
+          "ErrorEquals": [
+            "States.ALL"
+          ],
           "ResultPath": "$.errorInfo",
           "Next": "SaveError"
         }
@@ -33,11 +35,10 @@
       "ResultPath": "$.apiResponse",
       "Next": "TransformSuccess"
     },
-
     "TransformSuccess": {
       "Type": "Pass",
       "Parameters": {
-        "requestId.$": "$.requestId",
+        "requestId.$": "$$.Execution.Id",
         "status": "COMPLETED",
         "characterId.$": "$.characterId",
         "response": {
@@ -48,12 +49,11 @@
       },
       "Next": "SaveSuccess"
     },
-
     "SaveSuccess": {
       "Type": "Task",
       "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
       "Parameters": {
-        "TableName": "${AsyncResultsTable}",
+        "TableName": "bancow-dev-async-results",
         "Item": {
           "requestId": {
             "S.$": "$.requestId"
@@ -74,18 +74,17 @@
             "S.$": "$.timestamp"
           },
           "ttl": {
-            "N.$": "States.Format('{}', States.MathAdd(States.StringToJson(States.ArrayGetItem(States.StringSplit($$.State.EnteredTime, '.'), 0)), 86400))"
+            "N": "1769531400"
           }
         }
       },
       "End": true
     },
-
     "SaveError": {
       "Type": "Task",
       "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
       "Parameters": {
-        "TableName": "${AsyncResultsTable}",
+        "TableName": "bancow-dev-async-results",
         "Item": {
           "requestId": {
             "S.$": "$.requestId"
@@ -103,16 +102,18 @@
             "S.$": "$$.State.EnteredTime"
           },
           "ttl": {
-            "N.$": "States.Format('{}', States.MathAdd(States.StringToJson(States.ArrayGetItem(States.StringSplit($$.State.EnteredTime, '.'), 0)), 86400))"
+            "N": "1769531400"
           }
         }
       },
       "Retry": [
         {
-          "ErrorEquals": ["States.ALL"],
+          "ErrorEquals": [
+            "States.ALL"
+          ],
           "IntervalSeconds": 1,
           "MaxAttempts": 2,
-          "BackoffRate": 2.0
+          "BackoffRate": 2
         }
       ],
       "End": true
