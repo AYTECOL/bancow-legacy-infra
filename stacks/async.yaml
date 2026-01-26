@@ -279,6 +279,63 @@ Resources:
       Principal: states.amazonaws.com
       SourceArn: !Ref PersonNaturalStateMachine
 
+  # Rick and Morty Dummy Function Role
+  RickMortyDummyFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-rick-morty-dummy-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt AsyncResultsTable.Arn
+
+  # Rick and Morty Dummy Function for Callback Token
+  RickMortyDummyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'bancow-${Environment}-rick-morty-dummy'
+      Runtime: nodejs22.x
+      InlineCode: |
+        const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+        const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+        const client = new DynamoDBClient({});
+        const ddbDocClient = DynamoDBDocumentClient.from(client);
+        exports.handler = async (event) => {
+          const { taskToken, requestId } = event;
+          console.log(`Saving taskToken for requestId: ${requestId}`);
+          try {
+            await ddbDocClient.send(new UpdateCommand({
+              TableName: process.env.TABLE_NAME,
+              Key: { requestId },
+              UpdateExpression: "SET taskToken = :t",
+              ExpressionAttributeValues: { ":t": taskToken }
+            }));
+            return { status: "SUCCESS" };
+          } catch (error) {
+            console.error("Error saving taskToken:", error);
+            throw error;
+          }
+        };
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref AsyncResultsTable
+      Role: !GetAtt RickMortyDummyFunctionRole.Arn
+
   # Rick and Morty Async State Machine Role
   RickMortyStateMachineRole:
     Type: AWS::IAM::Role
@@ -322,8 +379,29 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
+                  - dynamodb:UpdateItem
                 Resource:
                   - !GetAtt AsyncResultsTable.Arn
+
+        - PolicyName: StepFunctionsCallback
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:SendTaskSuccess
+                  - states:SendTaskFailure
+                Resource: "*"
+
+        - PolicyName: InvokeLambdas
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt RickMortyDummyFunction.Arn
 
         - PolicyName: HttpInvokePermissions
           PolicyDocument:
@@ -360,6 +438,7 @@ Resources:
       DefinitionUri: ../state-machines/rick-morty-async.asl.json
       DefinitionSubstitutions:
         AsyncResultsTable: !Ref AsyncResultsTable
+        DummyFunctionArn: !GetAtt RickMortyDummyFunction.Arn
       Logging:
         Destinations:
           - CloudWatchLogsLogGroup:

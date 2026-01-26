@@ -136,6 +136,16 @@ Resources:
                   - states:StartExecution
                 Resource: !Ref RickMortyStateMachineArn
 
+        - PolicyName: StepFunctionsCallback
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:SendTaskSuccess
+                  - states:SendTaskFailure
+                Resource: "*"
+
         - PolicyName: DynamoDBGetItem
           PolicyDocument:
             Version: '2012-10-17'
@@ -264,10 +274,9 @@ Resources:
                 requestTemplates:
                   application/json: !Sub |
                     #set($requestId = $context.requestId)
-                    #set($inputBody = $input.json('$'))
                     {
                       "stateMachineArn": "${RickMortyStateMachineArn}",
-                      "input": "{\"requestId\":\"$requestId\",\"characterId\":$inputBody.characterId}"
+                      "input": "{\"requestId\": \"$requestId\", \"characterId\": $input.json('$.characterId')}"
                     }
                 responses:
                   default:
@@ -338,6 +347,9 @@ Resources:
                           #end
                           #if($item.error)
                           "error": $item.error.S,
+                          #end
+                          #if($item.taskToken)
+                          "taskToken": "$item.taskToken.S",
                           #end
                           "timestamp": "$item.timestamp.S"
                         }
