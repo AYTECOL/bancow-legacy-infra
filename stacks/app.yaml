@@ -265,13 +265,10 @@ Resources:
                 requestTemplates:
                   application/json: !Sub |
                     #set($requestId = $context.requestId)
-                    {
-                      "stateMachineArn": "${RickMortyStateMachineArn}",
-                      "input": "$util.escapeJavaScript($util.toJson({
-                        \"requestId\": \"$requestId\",
-                        \"characterId\": $input.json('$.characterId')
-                      }))"
-                    }
+                      {
+                        "stateMachineArn": "${RickMortyStateMachineArn}",
+                        "input": "{ \"requestId\": \"$requestId\", \"characterId\": $input.json('$.characterId') }"
+                      }
                 responses:
                   default:
                     statusCode: '200'
