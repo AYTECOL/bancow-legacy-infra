@@ -1,0 +1,118 @@
+{
+  "Comment": "Express Async - Rick and Morty API Integration",
+  "StartAt": "InvokeRickApi",
+  "States": {
+    "InvokeRickApi": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::http:invoke",
+      "Parameters": {
+        "Method": "GET",
+        "ApiEndpoint.$": "States.Format('https://rickandmortyapi.com/api/character/{}', $.characterId)"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout",
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 1.5
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.errorInfo",
+          "Next": "SaveError"
+        }
+      ],
+      "ResultPath": "$.apiResponse",
+      "Next": "TransformSuccess"
+    },
+
+    "TransformSuccess": {
+      "Type": "Pass",
+      "Parameters": {
+        "requestId.$": "$.requestId",
+        "status": "COMPLETED",
+        "characterId.$": "$.characterId",
+        "response": {
+          "statusCode.$": "$.apiResponse.StatusCode",
+          "body.$": "$.apiResponse.ResponseBody"
+        },
+        "timestamp.$": "$$.State.EnteredTime"
+      },
+      "Next": "SaveSuccess"
+    },
+
+    "SaveSuccess": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${AsyncResultsTable}",
+        "Item": {
+          "requestId": {
+            "S.$": "$.requestId"
+          },
+          "status": {
+            "S": "COMPLETED"
+          },
+          "characterId": {
+            "N.$": "States.Format('{}', $.characterId)"
+          },
+          "statusCode": {
+            "N.$": "States.Format('{}', $.response.statusCode)"
+          },
+          "characterData": {
+            "S.$": "States.JsonToString($.response.body)"
+          },
+          "timestamp": {
+            "S.$": "$.timestamp"
+          },
+          "ttl": {
+            "N.$": "States.Format('{}', States.MathAdd(States.StringToJson(States.ArrayGetItem(States.StringSplit($$.State.EnteredTime, '.'), 0)), 86400))"
+          }
+        }
+      },
+      "End": true
+    },
+
+    "SaveError": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${AsyncResultsTable}",
+        "Item": {
+          "requestId": {
+            "S.$": "$.requestId"
+          },
+          "status": {
+            "S": "FAILED"
+          },
+          "characterId": {
+            "N.$": "States.Format('{}', $.characterId)"
+          },
+          "error": {
+            "S.$": "States.JsonToString($.errorInfo)"
+          },
+          "timestamp": {
+            "S.$": "$$.State.EnteredTime"
+          },
+          "ttl": {
+            "N.$": "States.Format('{}', States.MathAdd(States.StringToJson(States.ArrayGetItem(States.StringSplit($$.State.EnteredTime, '.'), 0)), 86400))"
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "End": true
+    }
+  }
+}

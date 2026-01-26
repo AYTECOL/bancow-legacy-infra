@@ -61,6 +61,15 @@ Parameters:
     Type: String
     Description: ARN of the v2 Step Function from Async stack
 
+  # Rick and Morty Async integration
+  RickMortyStateMachineArn:
+    Type: String
+    Description: ARN of the Rick and Morty Async State Machine from Async stack
+
+  AsyncResultsTableName:
+    Type: String
+    Description: Name of the DynamoDB table for async results
+
   # Application configuration
   LogLevel:
     Type: String
@@ -104,6 +113,37 @@ Resources:
                 Action:
                   - states:StartSyncExecution
                 Resource: !Ref PersonNaturalStateMachineArn
+
+  # IAM Role for API Gateway to execute Rick and Morty Async workflows
+  ApiRickMortyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-api-rick-morty-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartAsyncExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref RickMortyStateMachineArn
+
+        - PolicyName: DynamoDBGetItem
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AsyncResultsTableName}'
 
   # API Gateway REST API
   ApiGateway:
@@ -200,6 +240,114 @@ Resources:
                         $util.toJson($body)
                         #end
               # responses are defined above (OpenAPI), integration response mapping is under x-amazon-apigateway-integration
+          /rick-morty/start:
+            post:
+              summary: Start Rick and Morty async workflow
+              responses:
+                '200':
+                  description: Execution started successfully
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          requestId:
+                            type: string
+                          status:
+                            type: string
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                type: aws
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:states:action/StartExecution'
+                httpMethod: POST
+                credentials: !GetAtt ApiRickMortyRole.Arn
+                requestTemplates:
+                  application/json: !Sub |
+                    #set($requestId = $context.requestId)
+                    #set($inputBody = $input.json('$'))
+                    {
+                      "stateMachineArn": "${RickMortyStateMachineArn}",
+                      "input": "{\"requestId\":\"$requestId\",\"characterId\":$inputBody.characterId}"
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        #set($requestId = $context.requestId)
+                        {
+                          "requestId": "$requestId",
+                          "status": "STARTED"
+                        }
+          /rick-morty/result/{requestId}:
+            get:
+              summary: Get Rick and Morty async result
+              parameters:
+                - name: requestId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                '200':
+                  description: Result retrieved successfully
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                '404':
+                  description: Result not found
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                type: aws
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
+                httpMethod: POST
+                credentials: !GetAtt ApiRickMortyRole.Arn
+                requestTemplates:
+                  application/json: !Sub |
+                    {
+                      "TableName": "${AsyncResultsTableName}",
+                      "Key": {
+                        "requestId": {
+                          "S": "$input.params('requestId')"
+                        }
+                      }
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        #set($item = $input.path('$.Item'))
+                        #if($item.toString() != "{}")
+                        {
+                          "requestId": "$item.requestId.S",
+                          "status": "$item.status.S",
+                          #if($item.characterId)
+                          "characterId": $item.characterId.N,
+                          #end
+                          #if($item.statusCode)
+                          "statusCode": $item.statusCode.N,
+                          #end
+                          #if($item.characterData)
+                          "data": $item.characterData.S,
+                          #end
+                          #if($item.error)
+                          "error": $item.error.S,
+                          #end
+                          "timestamp": "$item.timestamp.S"
+                        }
+                        #else
+                        #set($context.responseOverride.status = 404)
+                        {
+                          "error": "Result not found",
+                          "requestId": "$input.params('requestId')"
+                        }
+                        #end
         components:
           securitySchemes:
             CognitoAuthorizer:

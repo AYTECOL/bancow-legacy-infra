@@ -55,10 +55,43 @@ Conditions:
   UseExplicitArtifactKey: !Not [ !Equals [ !Ref ArtifactKey, '' ] ]
 
 Resources:
+  # DynamoDB Table for Rick and Morty Async Results
+  AsyncResultsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'bancow-${Environment}-async-results'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: requestId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: requestId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: RickMortyAsyncExercise
+
   SfnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/vendedlogs/states/bancow-${Environment}-v3-person-natural'
+      RetentionInDays: 14
+
+  RickMortySfnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/vendedlogs/states/bancow-${Environment}-rick-morty-async'
       RetentionInDays: 14
 
   GetPersonFunction:
@@ -246,6 +279,114 @@ Resources:
       Principal: states.amazonaws.com
       SourceArn: !Ref PersonNaturalStateMachine
 
+  # Rick and Morty Async State Machine Role
+  RickMortyStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-rick-morty-async-sfn-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub '${RickMortySfnLogGroup.Arn}:*'
+
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource:
+                  - !GetAtt AsyncResultsTable.Arn
+
+        - PolicyName: HttpInvokePermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:InvokeHTTPEndpoint
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    states:HTTPMethod: GET
+                  StringLike:
+                    states:HTTPEndpoint: "https://rickandmortyapi.com/*"
+
+        - PolicyName: XRayTracing
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # Rick and Morty Async State Machine
+  RickMortyStateMachine:
+    Type: AWS::Serverless::StateMachine
+    DependsOn: RickMortySfnLogGroup
+    Properties:
+      Name: !Sub 'bancow-${Environment}-rick-morty-async'
+      Type: EXPRESS
+      Role: !GetAtt RickMortyStateMachineRole.Arn
+      DefinitionUri: ../state-machines/rick-morty-async.asl.json
+      DefinitionSubstitutions:
+        AsyncResultsTable: !Ref AsyncResultsTable
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt RickMortySfnLogGroup.Arn
+        Level: ALL
+        IncludeExecutionData: true
+      Tracing:
+        Enabled: true
+
 Outputs:
   StateMachineArn:
     Value: !Ref PersonNaturalStateMachine
+
+  RickMortyStateMachineArn:
+    Description: ARN of the Rick and Morty Async State Machine
+    Value: !Ref RickMortyStateMachine
+    Export:
+      Name: !Sub 'bancow-${Environment}-rick-morty-sfn-arn'
+
+  AsyncResultsTableName:
+    Description: Name of the DynamoDB table for async results
+    Value: !Ref AsyncResultsTable
+    Export:
+      Name: !Sub 'bancow-${Environment}-async-results-table'
+
+  AsyncResultsTableArn:
+    Description: ARN of the DynamoDB table for async results
+    Value: !GetAtt AsyncResultsTable.Arn
+    Export:
+      Name: !Sub 'bancow-${Environment}-async-results-table-arn'
