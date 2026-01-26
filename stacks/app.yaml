@@ -371,7 +371,20 @@ Resources:
                 httpMethod: POST
                 credentials: !GetAtt ApiRickMortyRole.Arn
                 requestTemplates:
-                  application/json: !Sub |
+                  application/json: |
+                    {
+                      "TableName": "${AsyncResultsTableName}",
+                      "Key": {
+                        "requestId": { "S": "$input.params('requestId')" }
+                      },
+                      "UpdateExpression": "SET processed = :val",
+                      "ConditionExpression": "attribute_exists(requestId)",
+                      "ExpressionAttributeValues": {
+                        ":val": { "S": "true" }
+                      }
+                    }
+
+                  application/x-amz-json-1.0: |
                     {
                       "TableName": "${AsyncResultsTableName}",
                       "Key": {
