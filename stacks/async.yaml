@@ -310,6 +310,7 @@ Resources:
     Properties:
       FunctionName: !Sub 'bancow-${Environment}-rick-morty-dummy'
       Runtime: nodejs22.x
+      Handler: index.handler
       InlineCode: |
         const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
         const { DynamoDBDocumentClient, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
