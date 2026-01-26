@@ -385,15 +385,19 @@ Resources:
                 requestTemplates:
                   application/json: !Sub |
                     {
-                      "TableName": "${AsyncResultsTableName}",
-                      "Key": {
-                        "requestId": { "S": "$input.params('requestId')" }
-                      },
-                      "UpdateExpression": "SET processed = :val",
-                      "ExpressionAttributeValues": {
-                        ":val": { "S": "true" }
-                      }
-                    }
+                          "TableName": "${AsyncResultsTableName}",
+                          "Key": {
+                            "requestId": { "S": "$input.params('requestId')" }
+                          },
+                          "UpdateExpression": "SET #proc = :val",
+                          "ConditionExpression": "attribute_exists(requestId)",
+                          "ExpressionAttributeNames": {
+                            "#proc": "processed"
+                          },
+                          "ExpressionAttributeValues": {
+                            ":val": { "S": "true" }
+                          }
+                        }
                 responses:
                   default:
                     statusCode: '200'
