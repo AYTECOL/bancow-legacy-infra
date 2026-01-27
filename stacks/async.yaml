@@ -370,18 +370,6 @@ Resources:
       Tracing:
         Enabled: true
 
-  # Weather Approval Orchestrator Connection
-  WeatherConnection:
-    Type: AWS::Events::Connection
-    Properties:
-      Name: !Sub 'bancow-${Environment}-weather-connection'
-      AuthorizationType: API_KEY
-      AuthParameters:
-        ApiKeyAuthParameters:
-          ApiKeyName: "x-api-key"
-          ApiKeyValue: "dummy-key-open-meteo"
-      Description: Connection for Open-Meteo API (Weather Orchestrator)
-
   # Weather Orchestrator Log Group
   WeatherOrchestratorLogGroup:
     Type: AWS::Logs::LogGroup
@@ -451,7 +439,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - events:RetrieveConnectionCredentials
-                Resource: !GetAtt WeatherConnection.Arn
+                Resource: "*"
 
         - PolicyName: XRayTracing
           PolicyDocument:
@@ -474,7 +462,6 @@ Resources:
       DefinitionUri: ../state-machines/weather-orchestrator.asl.json
       DefinitionSubstitutions:
         AsyncResultsTable: !Ref AsyncResultsTable
-        WeatherConnectionArn: !GetAtt WeatherConnection.Arn
       Logging:
         Destinations:
           - CloudWatchLogsLogGroup:

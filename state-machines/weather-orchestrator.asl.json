@@ -20,7 +20,7 @@
         "Method": "GET",
         "ApiEndpoint": "https://api.open-meteo.com/v1/forecast",
         "Authentication": {
-          "ConnectionArn": "${WeatherConnectionArn}"
+          "ConnectionArn": "arn:aws:events:us-east-1:334333507387:connection/RickMortyPublic/e3b89041-f408-4cb4-84ff-79221e1dbb71"
         },
         "QueryParameters": {
           "latitude.$": "States.Format('{}', $.latitude)",
