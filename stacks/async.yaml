@@ -370,7 +370,126 @@ Resources:
       Tracing:
         Enabled: true
 
+  # Weather Approval Orchestrator Connection
+  WeatherConnection:
+    Type: AWS::Events::Connection
+    Properties:
+      Name: !Sub 'bancow-${Environment}-weather-connection'
+      AuthorizationType: API_KEY
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: "x-api-key"
+          ApiKeyValue: "dummy-key-open-meteo"
+      Description: Connection for Open-Meteo API (Weather Orchestrator)
+
+  # Weather Orchestrator Log Group
+  WeatherOrchestratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/vendedlogs/states/bancow-${Environment}-weather-orchestrator'
+      RetentionInDays: 14
+
+  # Weather Orchestrator Role
+  WeatherOrchestratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-weather-orchestrator-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub '${WeatherOrchestratorLogGroup.Arn}:*'
+
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                Resource:
+                  - !GetAtt AsyncResultsTable.Arn
+
+        - PolicyName: HttpInvokePermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:InvokeHTTPEndpoint
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    states:HTTPMethod: GET
+                  StringLike:
+                    states:HTTPEndpoint: "https://api.open-meteo.com/*"
+              - Effect: Allow
+                Action:
+                  - events:RetrieveConnectionCredentials
+                Resource: !GetAtt WeatherConnection.Arn
+
+        - PolicyName: XRayTracing
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # Weather Orchestrator State Machine
+  WeatherOrchestratorSfn:
+    Type: AWS::Serverless::StateMachine
+    DependsOn: WeatherOrchestratorLogGroup
+    Properties:
+      Name: !Sub 'bancow-${Environment}-weather-orchestrator'
+      Type: STANDARD
+      Role: !GetAtt WeatherOrchestratorRole.Arn
+      DefinitionUri: ../state-machines/weather-orchestrator.asl.json
+      DefinitionSubstitutions:
+        AsyncResultsTable: !Ref AsyncResultsTable
+        WeatherConnectionArn: !GetAtt WeatherConnection.Arn
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt WeatherOrchestratorLogGroup.Arn
+        Level: ALL
+        IncludeExecutionData: true
+      Tracing:
+        Enabled: true
+
 Outputs:
+  WeatherOrchestratorArn:
+    Description: ARN of the Weather Orchestrator State Machine
+    Value: !Ref WeatherOrchestratorSfn
+    Export:
+      Name: !Sub 'bancow-${Environment}-weather-orchestrator-arn'
   StateMachineArn:
     Value: !Ref PersonNaturalStateMachine
 

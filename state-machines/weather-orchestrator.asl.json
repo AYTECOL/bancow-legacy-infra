@@ -1,0 +1,110 @@
+{
+  "Comment": "Weather Approval Orchestrator - Standard Async",
+  "StartAt": "InitDefaults",
+  "States": {
+    "InitDefaults": {
+      "Type": "Pass",
+      "Parameters": {
+        "requestId.$": "$.requestId",
+        "city.$": "$.city",
+        "latitude.$": "$.latitude",
+        "longitude.$": "$.longitude",
+        "attempts": 0
+      },
+      "Next": "InvokeWeatherApi"
+    },
+    "InvokeWeatherApi": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::http:invoke",
+      "Parameters": {
+        "Method": "GET",
+        "ApiEndpoint": "https://api.open-meteo.com/v1/forecast",
+        "Authentication": {
+          "ConnectionArn": "${WeatherConnectionArn}"
+        },
+        "QueryParameters": {
+          "latitude.$": "States.Format('{}', $.latitude)",
+          "longitude.$": "States.Format('{}', $.longitude)",
+          "current_weather": "true"
+        }
+      },
+      "ResultPath": "$.weatherResult",
+      "Next": "SaveForecast"
+    },
+    "SaveForecast": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${AsyncResultsTable}",
+        "Item": {
+          "requestId": { "S.$": "$.requestId" },
+          "city": { "S.$": "$.city" },
+          "weatherData": { "S.$": "States.JsonToString($.weatherResult.ResponseBody)" },
+          "approved": { "S": "false" },
+          "status": { "S": "RUNNING" },
+          "createdAt": { "S.$": "$$.State.EnteredTime" },
+          "ttl": { "N": "1893456000" }
+        }
+      },
+      "ResultPath": null,
+      "Next": "WaitForApproval"
+    },
+    "WaitForApproval": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "CheckApproval"
+    },
+    "CheckApproval": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "${AsyncResultsTable}",
+        "Key": {
+          "requestId": { "S.$": "$.requestId" }
+        }
+      },
+      "ResultPath": "$.ddbResult",
+      "Next": "IsApproved"
+    },
+    "IsApproved": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.ddbResult.Item.approved.S",
+          "StringEquals": "true",
+          "Next": "FinalizeApproved"
+        }
+      ],
+      "Default": "CheckLoop"
+    },
+    "CheckLoop": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.attempts",
+          "NumericGreaterThanEquals": 10,
+          "Next": "FinalizeTimeout"
+        }
+      ],
+      "Default": "IncrementCounter"
+    },
+    "IncrementCounter": {
+      "Type": "Pass",
+      "Parameters": {
+        "requestId.$": "$.requestId",
+        "city.$": "$.city",
+        "weatherResult.$": "$.weatherResult",
+        "attempts.$": "States.MathAdd($.attempts, 1)"
+      },
+      "Next": "WaitForApproval"
+    },
+    "FinalizeApproved": {
+      "Type": "Pass",
+      "End": true
+    },
+    "FinalizeTimeout": {
+      "Type": "Pass",
+      "End": true
+    }
+  }
+}

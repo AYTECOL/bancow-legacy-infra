@@ -66,6 +66,10 @@ Parameters:
     Type: String
     Description: ARN of the Rick and Morty Async State Machine from Async stack
 
+  WeatherOrchestratorArn:
+    Type: String
+    Description: ARN of the Weather Orchestrator State Machine from Async stack
+
   AsyncResultsTableName:
     Type: String
     Description: Name of the DynamoDB table for async results
@@ -143,6 +147,37 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AsyncResultsTableName}'
+
+  # IAM Role for API Gateway to execute Weather Orchestrator
+  ApiWeatherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'bancow-${Environment}-api-weather-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartAsyncExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref WeatherOrchestratorArn
+
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
                   - dynamodb:UpdateItem
                 Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AsyncResultsTableName}'
 
@@ -426,6 +461,96 @@ Resources:
                           "error": "Internal Server Error",
                           "requestId": "$input.params('requestId')"
                         }
+          /weather/start:
+            post:
+              summary: Start Weather Approval Orchestrator
+              responses:
+                '200':
+                  description: Execution started successfully
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                type: aws
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:states:action/StartExecution'
+                httpMethod: POST
+                credentials: !GetAtt ApiWeatherRole.Arn
+                requestTemplates:
+                  application/json: !Sub |
+                    #set($requestId = $context.requestId)
+                      {
+                        "stateMachineArn": "${WeatherOrchestratorArn}",
+                        "input": "{ \"requestId\": \"$requestId\", \"city\": $input.json('$.city'), \"latitude\": $input.json('$.latitude'), \"longitude\": $input.json('$.longitude') }"
+                      }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        #set($requestId = $context.requestId)
+                        {
+                          "requestId": "$requestId",
+                          "status": "STARTED"
+                        }
+
+          /weather/confirm/{requestId}:
+            post:
+              summary: Confirm Weather Process
+              parameters:
+                - name: requestId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                '200':
+                  description: Process confirmed
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+              x-amazon-apigateway-integration:
+                timeoutInMillis: 29000
+                type: aws
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/UpdateItem'
+                httpMethod: POST
+                credentials: !GetAtt ApiWeatherRole.Arn
+                requestTemplates:
+                  application/json: !Sub |
+                    {
+                      "TableName": "${AsyncResultsTableName}",
+                      "Key": {
+                        "requestId": { "S": "$input.params('requestId')" }
+                      },
+                      "UpdateExpression": "SET approved = :true, status = :approved",
+                      "ConditionExpression": "attribute_exists(requestId)",
+                      "ExpressionAttributeValues": {
+                        ":true": { "S": "true" },
+                        ":approved": { "S": "APPROVED" }
+                      }
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        {
+                          "requestId": "$input.params('requestId')",
+                          "message": "Process confirmed"
+                        }
+                  4\d{2}:
+                    statusCode: '400'
+                    responseTemplates:
+                      application/json: |
+                        #set($context.responseOverride.status = 400)
+                        {
+                          "error": "Bad Request",
+                          "message": "Update failed. Check if requestId exists.",
+                          "requestId": "$input.params('requestId')"
+                        }
+
         components:
           securitySchemes:
             CognitoAuthorizer:

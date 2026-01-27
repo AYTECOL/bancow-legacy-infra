@@ -129,6 +129,7 @@ Resources:
         LambdaArtifactKey: !Ref LambdaArtifactKey
         PersonNaturalStateMachineArn: !GetAtt AsyncStackV2.Outputs.StateMachineArn
         RickMortyStateMachineArn: !GetAtt AsyncStackV2.Outputs.RickMortyStateMachineArn
+        WeatherOrchestratorArn: !GetAtt AsyncStackV2.Outputs.WeatherOrchestratorArn
         AsyncResultsTableName: !GetAtt AsyncStackV2.Outputs.AsyncResultsTableName
         LogLevel: !Ref LogLevel
       Tags:
