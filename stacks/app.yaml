@@ -482,12 +482,12 @@ Resources:
                     #set($rid = $context.requestId)
                     {
                       "stateMachineArn": "${WeatherOrchestratorArn}",
-                      "input": "$util.escapeJavaScript($util.toJson({
-                        \"requestId\": \"$rid\",
+                      "input": "{ 
+                        \"requestId\": \"$rid\", 
                         \"city\": $input.json('$.city'),
                         \"latitude\": $input.json('$.latitude'),
                         \"longitude\": $input.json('$.longitude')
-                      }))"
+                      }"
                     }
                 responses:
                   default:
