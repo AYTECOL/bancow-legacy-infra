@@ -480,15 +480,16 @@ Resources:
                 requestTemplates:
                   application/json: !Sub |
                     #set($rid = $context.requestId)
-                    {
-                      "stateMachineArn": "${WeatherOrchestratorArn}",
-                      "input": "{ 
-                        \"requestId\": \"$rid\",
-                        \"city\": \"$util.escapeJavaScript($input.json('$.city'))\",
-                        \"latitude\": $input.json('$.latitude'),
-                        \"longitude\": $input.json('$.longitude')
-                      }"
-                    }
+                    #set($payload = {})
+                      $util.qr($payload.put("requestId", $rid))
+                      $util.qr($payload.put("city", $input.json('$.city')))
+                      $util.qr($payload.put("latitude", $input.json('$.latitude')))
+                      $util.qr($payload.put("longitude", $input.json('$.longitude')))
+                      
+                      {
+                        "stateMachineArn": "${WeatherOrchestratorArn}",
+                        "input": "$util.escapeJavaScript($util.toJson($payload))"
+                      }
 
                 responses:
                   default:
