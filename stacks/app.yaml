@@ -484,7 +484,7 @@ Resources:
                       "stateMachineArn": "${WeatherOrchestratorArn}",
                       "input": "{ 
                         \"requestId\": \"$rid\",
-                        \"city\": $input.json('$.city'),
+                        \"city\": \"$util.escapeJavaScript($input.json('$.city'))\",
                         \"latitude\": $input.json('$.latitude'),
                         \"longitude\": $input.json('$.longitude')
                       }"
