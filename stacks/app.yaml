@@ -479,17 +479,15 @@ Resources:
                 credentials: !GetAtt ApiWeatherRole.Arn
                 requestTemplates:
                   application/json: !Sub |
+                    #set($city = $input.path('$.city'))
+                    #set($lat = $input.path('$.latitude'))
+                    #set($long = $input.path('$.longitude'))
                     #set($rid = $context.requestId)
-                    #set($payload = {})
-                      $util.qr($payload.put("requestId", $rid))
-                      $util.qr($payload.put("city", $input.json('$.city')))
-                      $util.qr($payload.put("latitude", $input.json('$.latitude')))
-                      $util.qr($payload.put("longitude", $input.json('$.longitude')))
-                      
-                      {
-                        "stateMachineArn": "${WeatherOrchestratorArn}",
-                        "input": "$util.escapeJavaScript($util.toJson($payload))"
-                      }
+                
+                    {
+                      "stateMachineArn": "${WeatherOrchestratorArn}",
+                      "input": "{\"city\": \"$city\", \"latitude\": $lat, \"longitude\": $long, \"requestId\": \"$rid\"}"
+                    }
 
                 responses:
                   default:

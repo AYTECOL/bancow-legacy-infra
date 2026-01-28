@@ -439,7 +439,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - events:RetrieveConnectionCredentials
+                  - events:DescribeConnection
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:us-east-1:334333507387:secret:events!connection/RickMortyPublic/*'
 
         - PolicyName: XRayTracing
           PolicyDocument:
