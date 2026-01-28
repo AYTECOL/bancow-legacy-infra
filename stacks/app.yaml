@@ -529,8 +529,11 @@ Resources:
                       "Key": {
                         "requestId": { "S": "$input.params('requestId')" }
                       },
-                      "UpdateExpression": "SET approved = :true, status = :approved",
+                      "UpdateExpression": "SET approved = :true, #st = :approved",
                       "ConditionExpression": "attribute_exists(requestId)",
+                      "ExpressionAttributeNames": {
+                        "#st": "status"
+                      },
                       "ExpressionAttributeValues": {
                         ":true": { "S": "true" },
                         ":approved": { "S": "APPROVED" }
