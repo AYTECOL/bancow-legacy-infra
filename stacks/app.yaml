@@ -479,11 +479,16 @@ Resources:
                 credentials: !GetAtt ApiWeatherRole.Arn
                 requestTemplates:
                   application/json: !Sub |
-                    #set($requestId = $context.requestId)
-                      {
-                        "stateMachineArn": "${WeatherOrchestratorArn}",
-                        "input": "{ \"requestId\": \"$requestId\", \"city\": $input.json('$.city'), \"latitude\": $input.json('$.latitude'), \"longitude\": $input.json('$.longitude') }"
-                      }
+                    #set($rid = $context.requestId)
+                    {
+                      "stateMachineArn": "${WeatherOrchestratorArn}",
+                      "input": "$util.escapeJavaScript($util.toJson({
+                        \"requestId\": \"$rid\",
+                        \"city\": $input.json('$.city'),
+                        \"latitude\": $input.json('$.latitude'),
+                        \"longitude\": $input.json('$.longitude')
+                      }))"
+                    }
                 responses:
                   default:
                     statusCode: '200'
