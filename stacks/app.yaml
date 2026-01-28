@@ -482,13 +482,14 @@ Resources:
                     #set($rid = $context.requestId)
                     {
                       "stateMachineArn": "${WeatherOrchestratorArn}",
-                      "input": "{ 
-                        \"requestId\": \"$rid\", 
-                        \"city\": \"$input.json('$.city')\",
+                      "input": "$util.escapeJavaScript($util.toJson({
+                        \"requestId\": \"$rid\",
+                        \"city\": $input.json('$.city'),
                         \"latitude\": $input.json('$.latitude'),
                         \"longitude\": $input.json('$.longitude')
-                      }"
+                      }))"
                     }
+
                 responses:
                   default:
                     statusCode: '200'
